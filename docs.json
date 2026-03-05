@@ -91,6 +91,7 @@
             "pages": [
               "api/assessments",
               "api/vulnerabilities",
+              "api/verifications",
               "api/users",
               "api/events",
               "api/audit-log"

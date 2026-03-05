@@ -1,0 +1,370 @@
+---
+title: "Verifications API"
+description: "API endpoints for managing vulnerability verifications and retests"
+icon: "check-double"
+---
+
+The Verifications API enables you to manage the vulnerability retest and verification workflow. After vulnerabilities are remediated, verifications track whether fixes are successful.
+
+## Authentication
+
+All endpoints require the `FACTION-API-KEY` header. Remediation or Assessor permissions are required for most operations.
+
+---
+
+## Get All Verifications
+
+<Note>Requires **Remediation** permission</Note>
+
+Retrieve all verifications in the system, optionally filtered by date range.
+
+```bash
+POST /api/verifications/all
+```
+
+### Request Parameters
+
+<ParamField header="FACTION-API-KEY" type="string" required>
+  API authentication key
+</ParamField>
+
+<ParamField body="start" type="date">
+  Filter by assessor completed date range start (format: YYYY-MM-DD)
+</ParamField>
+
+<ParamField body="end" type="date">
+  Filter by assessor completed date range end (format: YYYY-MM-DD)
+</ParamField>
+
+### Response
+
+Returns all open verifications and completed verifications within the specified date range. Non-completed verifications are returned regardless of date range.
+
+<ResponseField name="id" type="long">
+  Vulnerability ID
+</ResponseField>
+
+<ResponseField name="VerificationId" type="long">
+  Unique verification identifier
+</ResponseField>
+
+<ResponseField name="Start" type="timestamp">
+  Verification start date (milliseconds)
+</ResponseField>
+
+<ResponseField name="End" type="timestamp">
+  Verification end date (milliseconds)
+</ResponseField>
+
+<ResponseField name="AppId" type="string">
+  Application identifier
+</ResponseField>
+
+<ResponseField name="AssessmentName" type="string">
+  Assessment name
+</ResponseField>
+
+<ResponseField name="Tracking" type="string">
+  Vulnerability tracking ID (e.g., VID-1234)
+</ResponseField>
+
+<ResponseField name="Status" type="string">
+  Verification status: "In Progress", "Passed", or "Failed"
+</ResponseField>
+
+<ResponseField name="WorkFlowStatus" type="integer">
+  Internal workflow status code
+</ResponseField>
+
+<ResponseField name="Completed" type="timestamp">
+  Assessor completion date (milliseconds, empty if in progress)
+</ResponseField>
+
+<ResponseField name="RemediationCompleted" type="timestamp">
+  Remediation completion date (milliseconds)
+</ResponseField>
+
+<ResponseField name="Notes" type="string">
+  Verification notes
+</ResponseField>
+
+### Example
+
+```bash cURL
+curl -X POST https://your-instance.com/api/verifications/all \
+  -H "FACTION-API-KEY: your-api-key" \
+  -d "start=2024-01-01" \
+  -d "end=2024-12-31"
+```
+
+---
+
+## Get Assessor Verification Queue
+
+<Note>Requires **Assessor** or **Manager** permission</Note>
+
+Retrieve verifications assigned to the authenticated user. Does not include passed/failed verifications.
+
+```bash
+GET /api/verifications/queue
+```
+
+### Request Parameters
+
+<ParamField header="FACTION-API-KEY" type="string" required>
+  API authentication key
+</ParamField>
+
+### Response
+
+Returns only verifications assigned to the authenticated user that are not yet completed.
+
+Response format matches `/all` endpoint.
+
+### Example
+
+```bash cURL
+curl https://your-instance.com/api/verifications/queue \
+  -H "FACTION-API-KEY: your-api-key"
+```
+
+---
+
+## Get User Verifications
+
+<Note>Requires **Remediation** permission</Note>
+
+Retrieve all verifications for a specific user, optionally filtered by date range.
+
+```bash
+POST /api/verifications/userQueue
+```
+
+### Request Parameters
+
+<ParamField header="FACTION-API-KEY" type="string" required>
+  API authentication key
+</ParamField>
+
+<ParamField body="username" type="string" required>
+  Username of the assessor to query
+</ParamField>
+
+<ParamField body="start" type="date">
+  Filter by completed date range start (format: YYYY-MM-DD)
+</ParamField>
+
+<ParamField body="end" type="date">
+  Filter by completed date range end (format: YYYY-MM-DD)
+</ParamField>
+
+### Response
+
+Returns all open verifications for the specified user and completed verifications within the date range.
+
+Response format matches `/all` endpoint.
+
+### Example
+
+```bash cURL
+curl -X POST https://your-instance.com/api/verifications/userQueue \
+  -H "FACTION-API-KEY: your-api-key" \
+  -d "username=jsmith" \
+  -d "start=2024-01-01" \
+  -d "end=2024-12-31"
+```
+
+---
+
+## Pass or Fail a Verification
+
+<Note>Requires **Remediation**, **Assessor**, or **Manager** permission</Note>
+
+Mark a verification as passed or failed and optionally close the vulnerability.
+
+```bash
+POST /api/verifications/passfail
+```
+
+### Request Parameters
+
+<ParamField header="FACTION-API-KEY" type="string" required>
+  API authentication key
+</ParamField>
+
+<ParamField body="verificationID" type="long" required>
+  Verification ID to complete
+</ParamField>
+
+<ParamField body="passed" type="boolean" required>
+  `true` if the retest passed, `false` if it failed
+</ParamField>
+
+<ParamField body="notes" type="string">
+  Notes about the verification result
+</ParamField>
+
+<ParamField body="inProd" type="boolean">
+  If `true` and verification passed, closes the finding in production. Otherwise closes in development only.
+</ParamField>
+
+<ParamField body="completedDate" type="date">
+  Date of completion (format: YYYY-MM-DD). If blank, current date is used.
+</ParamField>
+
+### Behavior
+
+- If **passed** is `true`, the vulnerability is marked as closed in development (or production if `inProd=true`)
+- A note is automatically added to the vulnerability with the assessor's name, result, and provided notes
+- The verification is removed from the queue after completion
+
+### Example
+
+```bash cURL
+curl -X POST https://your-instance.com/api/verifications/passfail \
+  -H "FACTION-API-KEY: your-api-key" \
+  -d "verificationID=123" \
+  -d "passed=true" \
+  -d "inProd=true" \
+  -d "notes=Confirmed XSS is fixed in production"
+```
+
+---
+
+## Schedule a Retest
+
+<Note>Requires **Remediation** or **Manager** permission</Note>
+
+Create a new verification/retest for a vulnerability.
+
+```bash
+POST /api/verifications/retest
+```
+
+### Request Parameters
+
+<ParamField header="FACTION-API-KEY" type="string" required>
+  API authentication key
+</ParamField>
+
+<ParamField body="assessorId" type="string" required>
+  Username of the assessor to assign
+</ParamField>
+
+<ParamField body="remediationId" type="string">
+  Username of the remediation contact
+</ParamField>
+
+<ParamField body="vulnId" type="long">
+  Vulnerability ID to retest (use either `vulnId` or `trackingId`)
+</ParamField>
+
+<ParamField body="trackingId" type="string">
+  Vulnerability tracking ID to retest (use either `vulnId` or `trackingId`)
+</ParamField>
+
+<ParamField body="start" type="date" required>
+  Verification start date (format: YYYY-MM-DD)
+</ParamField>
+
+<ParamField body="end" type="date" required>
+  Verification end date (format: YYYY-MM-DD)
+</ParamField>
+
+### Response
+
+Returns the newly created Verification ID.
+
+```json
+{
+  "result": "SUCCESS",
+  "verificationId": 456
+}
+```
+
+### Example
+
+```bash cURL
+curl -X POST https://your-instance.com/api/verifications/retest \
+  -H "FACTION-API-KEY: your-api-key" \
+  -d "assessorId=jsmith" \
+  -d "remediationId=alee" \
+  -d "trackingId=VID-1234" \
+  -d "start=2024-02-01" \
+  -d "end=2024-02-05"
+```
+
+---
+
+## Workflow States
+
+Verifications progress through workflow states:
+
+| State | Value | Description |
+|-------|-------|-------------|
+| In Assessor Queue | 0 | Waiting for assessor to verify fix |
+| Completed | N/A | Verification completed (passed or failed) |
+
+When a verification is marked as passed/failed via `/passfail`, it is removed from the queue and the result is recorded on the vulnerability.
+
+## Integration Example
+
+Complete retest workflow using JavaScript:
+
+```javascript
+// 1. Schedule a retest
+const scheduleRetest = await fetch('/api/verifications/retest', {
+  method: 'POST',
+  headers: {
+    'FACTION-API-KEY': apiKey,
+    'Content-Type': 'application/x-www-form-urlencoded'
+  },
+  body: new URLSearchParams({
+    assessorId: 'jsmith',
+    trackingId: 'VID-5678',
+    start: '2024-02-01',
+    end: '2024-02-05'
+  })
+});
+
+const { verificationId } = await scheduleRetest.json();
+
+// 2. Assessor retrieves their queue
+const queue = await fetch('/api/verifications/queue', {
+  headers: { 'FACTION-API-KEY': assessorApiKey }
+});
+
+const verifications = await queue.json();
+
+// 3. Complete the verification
+const result = await fetch('/api/verifications/passfail', {
+  method: 'POST',
+  headers: {
+    'FACTION-API-KEY': assessorApiKey,
+    'Content-Type': 'application/x-www-form-urlencoded'
+  },
+  body: new URLSearchParams({
+    verificationID: verificationId,
+    passed: 'true',
+    inProd: 'true',
+    notes: 'Verified fix in production environment'
+  })
+});
+```
+
+## Best Practices
+
+<Tip>Use tracking IDs instead of vulnerability IDs when scheduling retests from external systems</Tip>
+
+- **Date ranges**: When querying verifications, use date ranges to limit results to specific time periods
+- **Production closures**: Only set `inProd=true` when you've verified the fix in production, not just development
+- **Notes**: Always include detailed notes when passing/failing verifications for audit trail
+- **Workflow integration**: Integrate with ticketing systems (Jira, ServiceNow) using the API to automatically schedule retests when remediation tickets are closed
+
+## Error Responses
+
+| Code | Message | Cause |
+|------|---------|-------|
+| 401 | Not Authorized | Invalid API key or insufficient permissions |
+| 400 | Verification does not exist | Invalid verification ID |
+| 400 | User does not exist | Invalid username in `/userQueue` |
