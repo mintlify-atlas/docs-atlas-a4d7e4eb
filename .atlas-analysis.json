@@ -1,0 +1,116 @@
+{
+  "projectType": "saas",
+  "projectName": "Faction",
+  "projectDescription": "Penetration testing report generation and assessment collaboration platform for security teams",
+  "theme": "aspen",
+  "primaryColor": "#1c92e1",
+  "lightColor": "#8568d1",
+  "darkColor": "#f6f5f9",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "installation"
+            ]
+          },
+          {
+            "group": "Core Features",
+            "pages": [
+              "features/assessments",
+              "features/vulnerabilities",
+              "features/reporting",
+              "features/collaboration",
+              "features/peer-review"
+            ]
+          },
+          {
+            "group": "User Guides",
+            "pages": [
+              "guides/creating-assessments",
+              "guides/vulnerability-tracking",
+              "guides/custom-templates",
+              "guides/team-management",
+              "guides/remediation-workflow"
+            ]
+          },
+          {
+            "group": "Integrations",
+            "pages": [
+              "integrations/burp-suite",
+              "integrations/ldap",
+              "integrations/oauth",
+              "integrations/smtp"
+            ]
+          },
+          {
+            "group": "Extensions",
+            "pages": [
+              "extensions/overview",
+              "extensions/app-store",
+              "extensions/development",
+              "extensions/api-reference"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "api/introduction",
+              "api/authentication"
+            ]
+          },
+          {
+            "group": "Endpoints",
+            "pages": [
+              "api/assessments",
+              "api/vulnerabilities",
+              "api/users",
+              "api/events",
+              "api/audit-log"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Automated penetration testing report generation with customizable DOCX templates",
+    "Real-time collaboration between assessors via web interface and Burp Suite extension",
+    "Comprehensive vulnerability tracking and remediation workflow management",
+    "Peer review system with track changes for quality assurance",
+    "Extensible plugin system (App Store) for custom integrations and workflows",
+    "Multi-tenant team and assessment scheduling capabilities",
+    "Full REST API for third-party tool integration",
+    "Built-in vulnerability template library with 75+ pre-populated entries",
+    "LDAP and OAuth2.0 authentication support",
+    "Remediation tracking with custom SLA warnings and alerts"
+  ],
+  "publicApiSurface": [
+    "GET /api/assessments/queue - Get assessments for authenticated user",
+    "GET /api/assessments/{aid} - Get assessment details by ID",
+    "POST /api/assessments/create - Create new assessment",
+    "GET /api/assessments/vulns/{aid} - Get vulnerabilities for assessment",
+    "POST /api/assessments/addVuln/{aid} - Add vulnerability to assessment",
+    "GET /api/vulnerabilities/default - Get all default vulnerability templates",
+    "POST /api/vulnerabilities/default - Upload vulnerability templates (JSON)",
+    "GET /api/vulnerabilities/default/{name} - Search vulnerability templates",
+    "GET /api/vulnerabilities/getvuln/{id} - Get vulnerability by ID",
+    "GET /api/vulnerabilities/gettracking/{track} - Get vulnerability by tracking ID",
+    "POST /api/vulnerabilities/settracking - Assign tracking number to vulnerability",
+    "POST /api/vulnerabilities/setstatus - Update vulnerability remediation status",
+    "GET /api/vulnerabilities/categories - Get all vulnerability categories",
+    "GET /api/users - List users",
+    "GET /api/events - Server-sent events for real-time updates",
+    "ExtensionAPI - Plugin development interface for custom extensions"
+  ]
+}
