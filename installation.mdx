@@ -1,0 +1,455 @@
+---
+title: Installation
+description: Complete installation guide for Faction including Docker, prerequisites, and configuration
+---
+
+# Installation
+
+This guide covers all installation methods for Faction, from the recommended Docker Compose setup to building from source.
+
+## Prerequisites
+
+<Warning>
+**Important:** MongoDB 8.0 (used by Faction) requires a CPU with AVX instruction set support. This may cause issues in certain virtualized environments.
+</Warning>
+
+Before installing Faction, ensure your system meets these requirements:
+
+### Required
+
+- **Docker** and **Docker Compose** (for containerized deployment)
+- **Java JDK 11** (for building from source)
+- **Maven** (for building from source)
+- **CPU with AVX support** - Required for MongoDB 8.0
+
+### Recommended
+
+- **4GB RAM minimum** - 2GB allocated to Tomcat, additional for MongoDB
+- **10GB disk space** - For application, database, and report storage
+- **Linux, macOS, or Windows** with Docker support
+
+## Docker Compose Installation (Recommended)
+
+The fastest and most reliable way to deploy Faction is using Docker Compose.
+
+### Step 1: Clone the Repository
+
+```bash
+git clone https://github.com/factionsecurity/faction.git
+cd faction
+```
+
+### Step 2: Review Configuration
+
+The `docker-compose.yml` file includes default configuration:
+
+```yaml
+services:
+  faction-mongo:
+    image: mongo:8.0
+    ports:
+      - "27017:27017"
+    volumes:
+      - '~/.faction/data:/data/db'
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=faction_mongo_user
+      - MONGO_INITDB_ROOT_PASSWORD=faction_mongo_pass
+      
+  tomcat-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: base_app
+    environment:
+      - 'FACTION_REPORT_STORAGE=local'
+      - 'FACTION_MONGO_HOST=faction-mongo'
+      - 'FACTION_MONGO_DATABASE=faction'
+      - 'FACTION_MONGO_USER=faction_mongo_user'
+      - 'FACTION_MONGO_PASSWORD=faction_mongo_pass'
+      - 'FACTION_SECRET_KEY=faction_encryption_key'
+      - 'FACTION_OAUTH_CALLBACK=http://localhost:8080'
+      - 'FACTION_APPSTORE_ENABLED=true'
+    ports:
+      - "8080:8080"
+    depends_on:
+      - faction-mongo
+```
+
+### Step 3: Launch Faction
+
+```bash
+docker-compose up --build
+```
+
+<Info>
+The first build will download dependencies and compile the WAR file. This may take 5-10 minutes depending on your system.
+</Info>
+
+### Step 4: Access Faction
+
+Once containers are running, access Faction at:
+
+```
+http://127.0.0.1:8080
+```
+
+## Environment Variables
+
+Faction uses environment variables for configuration. These can be set in `docker-compose.yml` or as system environment variables.
+
+### Core Configuration
+
+| Variable | Description | Default |
+|----------|-------------|----------|
+| `FACTION_MONGO_HOST` | MongoDB hostname | `faction-mongo` |
+| `FACTION_MONGO_DATABASE` | MongoDB database name | `faction` |
+| `FACTION_MONGO_USER` | MongoDB username | `faction_mongo_user` |
+| `FACTION_MONGO_PASSWORD` | MongoDB password | `faction_mongo_pass` |
+| `FACTION_SECRET_KEY` | Encryption key for sensitive data | `faction_encryption_key` |
+
+<Warning>
+**Security:** Change `FACTION_SECRET_KEY` and MongoDB credentials before deploying to production!
+</Warning>
+
+### Storage Configuration
+
+| Variable | Description | Default |
+|----------|-------------|----------|
+| `FACTION_REPORT_STORAGE` | Storage backend: `local` or `s3` | `local` |
+
+### OAuth/SAML Configuration
+
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `FACTION_OAUTH_CALLBACK` | OAuth callback URL | Yes (if using OAuth/SAML) |
+| `FACTION_APPSTORE_ENABLED` | Enable App Store extensions | `true` |
+
+### SMTP Configuration (Optional)
+
+Configure SMTP for email notifications:
+
+| Variable | Description |
+|----------|-------------|
+| `FACTION_SMTP_SERVER` | SMTP server hostname |
+| `FACTION_SMTP_PORT` | SMTP server port |
+| `FACTION_SMTP_USER` | SMTP username |
+| `FACTION_SMTP_PASSWORD` | SMTP password |
+| `FACTION_SMTP_FROM_ADDRESS` | From email address |
+
+<Info>
+SMTP settings can also be configured through the web interface at **Settings → Email Configuration**.
+</Info>
+
+## Building from Source
+
+For development or customization, you can build Faction from source.
+
+<Steps>
+  <Step title="Install Prerequisites">
+    Ensure you have:
+    - Java JDK 11
+    - Maven 3.6+
+    - Git
+    
+    ```bash
+    # Verify installations
+    java -version
+    mvn -version
+    ```
+  </Step>
+  
+  <Step title="Clone Repository">
+    ```bash
+    git clone https://github.com/factionsecurity/faction.git
+    cd faction
+    ```
+  </Step>
+  
+  <Step title="Build with Maven">
+    ```bash
+    mvn clean package
+    ```
+    
+    This will:
+    - Compile Java sources from `src/`
+    - Run tests from `test/`
+    - Package into `target/faction.war`
+    
+    <Info>
+    The build process uses dependencies defined in `pom.xml`, including Struts 6.7.0, MongoDB drivers, and docx4j for report generation.
+    </Info>
+  </Step>
+  
+  <Step title="Deploy WAR File">
+    Deploy the generated WAR file to Tomcat 9:
+    
+    ```bash
+    # Copy to Tomcat webapps
+    cp target/faction.war /usr/local/tomcat/webapps/ROOT.war
+    
+    # Start Tomcat
+    /usr/local/tomcat/bin/catalina.sh run
+    ```
+  </Step>
+</Steps>
+
+## Data Persistence
+
+By default, Docker Compose stores MongoDB data in:
+
+```
+~/.faction/data
+```
+
+This ensures your assessments, findings, and configurations persist across container restarts.
+
+### Backup Recommendations
+
+<Steps>
+  <Step title="Backup MongoDB Data">
+    ```bash
+    # Create backup
+    docker exec faction-mongo mongodump \
+      --username=faction_mongo_user \
+      --password=faction_mongo_pass \
+      --out=/backup
+    
+    # Copy from container
+    docker cp faction-mongo:/backup ./faction-backup-$(date +%Y%m%d)
+    ```
+  </Step>
+  
+  <Step title="Restore from Backup">
+    ```bash
+    # Copy backup to container
+    docker cp ./faction-backup-20260305 faction-mongo:/restore
+    
+    # Restore
+    docker exec faction-mongo mongorestore \
+      --username=faction_mongo_user \
+      --password=faction_mongo_pass \
+      /restore
+    ```
+  </Step>
+</Steps>
+
+## Troubleshooting
+
+### MongoDB AVX Issues
+
+<Warning>
+**Problem:** MongoDB 8.0 requires CPU AVX support, which may not be available in:
+- Oracle VirtualBox VMs
+- Some Kubernetes configurations
+- Older CPUs
+</Warning>
+
+**Solutions:**
+
+1. **VirtualBox Users:**
+   - Enable AVX passthrough in VM settings
+   - Or use MongoDB 4.4 (change in `docker-compose.yml`)
+   
+   See: [MongoDB VirtualBox Discussion](https://www.mongodb.com/community/forums/t/could-not-start-mongodb-5-0-running-oracle-linux-on-virtualbox/120524/10)
+
+2. **Kubernetes Users:**
+   - Use node with AVX support
+   - Or downgrade MongoDB version
+   
+   See: [MongoDB Kubernetes AVX Issue](https://stackoverflow.com/questions/70818543/mongo-db-deployment-not-working-in-kubernetes-because-processor-doesnt-have-avx)
+
+### Port Conflicts
+
+If port 8080 is already in use:
+
+```yaml
+# In docker-compose.yml, change:
+ports:
+  - "8081:8080"  # Use port 8081 instead
+```
+
+Then access Faction at `http://127.0.0.1:8081`
+
+### Memory Issues
+
+If you encounter OutOfMemoryError:
+
+1. **Increase Tomcat Heap:**
+   
+   Edit `setenv.sh` or set in `docker-compose.yml`:
+   
+   ```yaml
+   environment:
+     - CATALINA_OPTS=-Xms2g -Xmx4g
+   ```
+
+2. **Monitor with JMX:**
+   
+   The included `setenv.sh` enables JMX monitoring on port 9090:
+   
+   ```bash
+   # Connect with VisualVM or JConsole
+   jconsole localhost:9090
+   ```
+
+### Container Logs
+
+View logs for troubleshooting:
+
+```bash
+# Faction application logs
+docker logs -f faction-tomcat-service-1
+
+# MongoDB logs
+docker logs -f faction-faction-mongo-1
+
+# All services
+docker-compose logs -f
+```
+
+## Production Deployment
+
+### Security Hardening
+
+<Steps>
+  <Step title="Change Default Credentials">
+    Update MongoDB credentials and secret key in `docker-compose.yml`:
+    
+    ```yaml
+    environment:
+      - MONGO_INITDB_ROOT_PASSWORD=<strong-random-password>
+      - FACTION_SECRET_KEY=<secure-encryption-key>
+    ```
+  </Step>
+  
+  <Step title="Enable HTTPS">
+    Use a reverse proxy (nginx, Apache) with SSL/TLS:
+    
+    ```nginx
+    server {
+      listen 443 ssl;
+      server_name faction.example.com;
+      
+      ssl_certificate /path/to/cert.pem;
+      ssl_certificate_key /path/to/key.pem;
+      
+      location / {
+        proxy_pass http://localhost:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+      }
+    }
+    ```
+  </Step>
+  
+  <Step title="Restrict MongoDB Access">
+    Remove MongoDB port exposure in `docker-compose.yml`:
+    
+    ```yaml
+    # Remove or comment out:
+    # ports:
+    #   - "27017:27017"
+    ```
+  </Step>
+  
+  <Step title="Configure Firewall">
+    Only expose HTTPS port (443) to external networks.
+  </Step>
+</Steps>
+
+### Performance Tuning
+
+**JVM Settings** (`setenv.sh`):
+
+```bash
+# Adjust based on available RAM
+export CATALINA_OPTS="-Xms4g -Xmx8g"
+export CATALINA_OPTS="$CATALINA_OPTS -XX:+UseG1GC"
+export CATALINA_OPTS="$CATALINA_OPTS -XX:+UseStringDeduplication"
+```
+
+## Advanced Configuration
+
+### LDAP Integration
+
+Configure LDAP authentication through the web interface:
+
+**Settings → LDAP Configuration**
+
+Required fields:
+- LDAP URL
+- Base DN
+- Bind DN
+- Search DN
+- Object Class
+
+### OAuth 2.0 / SAML Setup
+
+Configure SSO through environment variables and web interface:
+
+1. Set callback URL:
+   ```yaml
+   - FACTION_OAUTH_CALLBACK=https://faction.example.com
+   ```
+
+2. Configure in **Settings → SSO Configuration**:
+   - OAuth Client ID
+   - OAuth Client Secret
+   - Discovery URI (for OIDC)
+   - SAML Metadata URL (for SAML)
+
+### S3 Storage Backend
+
+For distributed deployments, use S3 for report storage:
+
+```yaml
+environment:
+  - FACTION_REPORT_STORAGE=s3
+  - AWS_ACCESS_KEY_ID=<your-key>
+  - AWS_SECRET_ACCESS_KEY=<your-secret>
+  - AWS_S3_BUCKET=faction-reports
+  - AWS_REGION=us-east-1
+```
+
+## Development Setup
+
+For development with live reload:
+
+```bash
+# Use development compose file
+docker-compose -f docker-compose-dev.yml up
+
+# Build JavaScript assets
+./buildJSAssets.sh
+```
+
+The development setup:
+- Mounts source code as volumes
+- Enables hot reload
+- Exposes debugging ports
+
+## Getting Help
+
+<CardGroup cols={2}>
+  <Card title="Community Support" icon="slack" href="https://owasp.org/slack/invite">
+    Join #project-faction on OWASP Slack
+  </Card>
+  
+  <Card title="Report Issues" icon="github" href="https://github.com/factionsecurity/faction/issues">
+    Submit bugs and feature requests on GitHub
+  </Card>
+  
+  <Card title="Contributing" icon="code-pull-request" href="https://github.com/factionsecurity/faction/blob/main/CONTRIBUTING.md">
+    Read the contributing guidelines
+  </Card>
+  
+  <Card title="Video Tutorials" icon="youtube" href="https://www.youtube.com/@factionsecurity/videos">
+    Watch installation walkthroughs
+  </Card>
+</CardGroup>
+
+---
+
+<Info>
+**Next:** Once installed, follow the [Quickstart Guide](/quickstart) to create your first assessment.
+</Info>

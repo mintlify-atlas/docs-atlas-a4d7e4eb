@@ -1,0 +1,202 @@
+---
+title: 'Assessments'
+description: 'Manage security assessments from creation through completion in Faction'
+icon: 'clipboard-list'
+---
+
+## Overview
+
+Assessments are the core entity in Faction, representing penetration tests, security reviews, and other security evaluation activities. Each assessment tracks the entire lifecycle from initial scheduling through peer review and final report generation.
+
+## Assessment Lifecycle
+
+Assessments in Faction progress through several workflow states managed by the `Assessment` class (src/com/fuse/dao/Assessment.java:90):
+
+<Steps>
+  <Step title="Scheduled">
+    Assessment is created with start and end dates but testing has not yet begun.
+  </Step>
+  <Step title="In Progress">
+    Current date is after the start date - testing is actively underway.
+  </Step>
+  <Step title="Past Due">
+    Current date has passed the end date but assessment is not yet completed.
+  </Step>
+  <Step title="Completed">
+    Assessment has a completion date set, indicating testing is finished.
+  </Step>
+</Steps>
+
+### Workflow States
+
+The `workflow` field (Assessment.java:90) tracks the peer review process:
+
+- **0**: Initial state / Accepted Edits
+- **1**: In Peer Review (`isInPr()` - line 594)
+- **2**: Peer Review Complete (`isPrComplete()` - line 586)
+- **3**: Edits Accepted (`isAcceptedEdits()` - line 576)
+- **4**: Finalized (`isFinalized()` - line 568)
+
+## Assessment Types
+
+Assessments can be configured with different types (`AssessmentType` class) that determine scoring systems:
+
+```java
+// AssessmentType.java supports multiple rating systems
+public String getRatingSystemName() {
+    if(this.isCvss31()) {
+        return "CVSS 3.1";
+    } else if(this.isCvss40()) {
+        return "CVSS 4.0";
+    } else {
+        return "Native (default)";
+    }
+}
+```
+
+### Supported Scoring Systems
+
+<CardGroup cols={3}>
+  <Card title="Native Ranking" icon="layer-group">
+    Faction's built-in risk ranking system using Likelihood, Impact, and Overall scores
+  </Card>
+  <Card title="CVSS 3.1" icon="shield">
+    Common Vulnerability Scoring System version 3.1 for standardized severity ratings
+  </Card>
+  <Card title="CVSS 4.0" icon="shield-halved">
+    Latest CVSS version 4.0 with enhanced metrics and scoring
+  </Card>
+</CardGroup>
+
+## Team Collaboration
+
+Assessments support multiple team members in different roles:
+
+- **Engagement Manager** (`engagement` field): User responsible for client communications
+- **Assessors** (`assessor` list): Multiple testers can collaborate on the same assessment
+- **Remediation Contact** (`remediation` field): Developer or security team contact for vulnerability fixes
+
+## Custom Fields
+
+Assessments support custom fields for organization-specific data collection:
+
+```java
+// Custom fields are stored as a list in Assessment.java:53
+@OneToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
+private List<CustomField> CustomFields;
+```
+
+<Tip>
+Custom fields can be configured per assessment type, allowing different data collection for web application tests, network assessments, cloud reviews, etc.
+</Tip>
+
+### Field Types
+
+Custom fields support different types:
+- **Variables** (type < 3): Simple text or data fields included in reports
+- **Forms** (type = 3): Structured questionnaires or checklists
+
+## Assessment Data
+
+Key information tracked for each assessment:
+
+| Field | Description | Source Reference |
+|-------|-------------|------------------|
+| Name | Assessment identifier | Assessment.java:41 |
+| Summary | Executive summary of findings | Assessment.java:39 |
+| Risk Analysis | Overall risk posture analysis | Assessment.java:40 |
+| Start/End Dates | Testing window | Assessment.java:49-50 |
+| Completion Date | When testing finished | Assessment.java:51 |
+| Application ID | Target system identifier | Assessment.java:48 |
+| Distribution List | Report recipients | Assessment.java:59 |
+| Access Notes | Credentials and access info | Assessment.java:60 |
+
+## Notebooks and Notes
+
+Faction provides a notebook system for organizing testing notes:
+
+```java
+// Multiple notes per assessment (Assessment.java:58)
+@OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+private List<Note> notebook = new ArrayList<>();
+```
+
+Notes include:
+- **Name**: Note identifier
+- **Content**: Testing observations and findings
+- **Created/Updated timestamps**: Audit trail
+- **Created/Updated by**: User tracking
+
+<Note>
+The notebook system replaced the deprecated single `Notes` field (Assessment.java:235), providing better organization for complex assessments.
+</Note>
+
+## Checklists and Questionnaires
+
+Assessments can include structured checklists:
+
+```java
+// Checklist answers stored per assessment
+@OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+private List<CheckListAnswers> answers = new ArrayList<>();
+```
+
+This supports compliance frameworks, testing methodologies (OWASP, PTES, etc.), and custom evaluation criteria.
+
+## Document Management
+
+Each assessment maintains associated files and images:
+
+- **Images**: Screenshots and evidence (Assessment.java:81)
+- **Attached Files**: Supporting documentation
+- **Final Report**: Generated DOCX report (Assessment.java:66)
+- **Retest Report**: Validation testing report (Assessment.java:70)
+
+## Concurrent Editing Protection
+
+Faction includes locking mechanisms to prevent conflicts during multi-user editing:
+
+```java
+// Section-level locks (Assessment.java:97-116)
+private Boolean notesLock = false;
+private Boolean summary_lock = false;
+private Boolean risk_lock = false;
+```
+
+Each lock tracks:
+- Lock status (enabled/disabled)
+- User who holds the lock
+- Lock acquisition timestamp
+
+This ensures only one assessor can edit a specific section at a time, preventing data loss.
+
+## Campaign Organization
+
+Assessments can be grouped into campaigns for managing related testing activities:
+
+```java
+@ManyToOne
+private Campaign campaign;  // Assessment.java:72
+```
+
+Campaigns enable tracking of:
+- Related assessments across time
+- Retesting efforts
+- Program-level metrics
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Vulnerabilities" icon="bug" href="/features/vulnerabilities">
+    Track and manage security findings within assessments
+  </Card>
+  <Card title="Peer Review" icon="users" href="/features/peer-review">
+    Submit assessments for quality assurance review
+  </Card>
+  <Card title="Reporting" icon="file-pdf" href="/features/reporting">
+    Generate professional security reports
+  </Card>
+  <Card title="Collaboration" icon="people-group" href="/features/collaboration">
+    Real-time teamwork features
+  </Card>
+</CardGroup>

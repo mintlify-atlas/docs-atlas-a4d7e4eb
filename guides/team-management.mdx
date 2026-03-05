@@ -1,0 +1,361 @@
+---
+title: 'Team Management'
+description: 'Managing users, roles, permissions, and team organization in Faction'
+icon: 'users'
+---
+
+## Overview
+
+Faction provides comprehensive user and team management with role-based access control (RBAC), team organization, and granular permissions. This guide covers creating users, assigning roles, managing teams, and configuring access levels.
+
+## User Roles and Permissions
+
+Faction implements six primary user roles, each with specific capabilities:
+
+<CardGroup cols={2}>
+  <Card title="Admin" icon="user-shield">
+    **Full System Access**
+    
+    - Manage users and permissions
+    - Configure system settings
+    - Access all assessments and data
+    - Install and configure extensions
+    - Manage templates and configurations
+  </Card>
+  
+  <Card title="Assessor" icon="user-pen">
+    **Security Testing**
+    
+    - Create and edit assessments
+    - Add vulnerabilities and findings
+    - Upload evidence and files
+    - Collaborate on assessments
+    - Generate reports
+    - Submit for peer review
+  </Card>
+  
+  <Card title="Manager" icon="user-tie">
+    **Team Oversight**
+    
+    - View all team assessments
+    - Review reports and metrics
+    - Track team progress
+    - Assign assessments
+    - Access dashboards and analytics
+  </Card>
+  
+  <Card title="Engagement Contact" icon="user-check">
+    **Stakeholder Role**
+    
+    - View assigned assessments
+    - Receive notifications
+    - Download reports
+    - Provide business context
+    - Limited editing capabilities
+  </Card>
+  
+  <Card title="Remediation Contact" icon="user-clock">
+    **Fix Coordination**
+    
+    - Access remediation queue
+    - Schedule verification testing
+    - Track vulnerability status
+    - Coordinate with assessors
+    - Update fix status (dev/prod)
+  </Card>
+  
+  <Card title="Executive" icon="user-crown">
+    **Strategic Oversight**
+    
+    - View high-level dashboards
+    - Access executive summaries
+    - Review risk metrics
+    - Limited operational access
+  </Card>
+</CardGroup>
+
+## Creating and Managing Users
+
+<Steps>
+  <Step title="Navigate to User Management">
+    As an admin, go to **Settings > Users** to access user management.
+  </Step>
+
+  <Step title="Add New User">
+    Click **Create User** and provide:
+    
+    - **First Name**: User's first name
+    - **Last Name**: User's last name
+    - **Email**: Email address (used for notifications)
+    - **Username**: Login username
+    - **Password**: Initial password (user can change later)
+    
+    <Note>
+      If LDAP, OAuth 2.0, or SAML2 authentication is configured, external users may be auto-provisioned on first login.
+    </Note>
+  </Step>
+
+  <Step title="Assign Team">
+    Select which team the user belongs to. Teams provide:
+    
+    - Organizational grouping
+    - Access control boundaries
+    - Assessment assignment pools
+    - Reporting hierarchy
+    
+    <Info>
+      Users can only belong to one team at a time. Create multiple teams for different business units, geographic regions, or functional groups.
+    </Info>
+  </Step>
+
+  <Step title="Configure Permissions">
+    Enable appropriate roles by checking permission boxes:
+    
+    - **Admin**: Full system control
+    - **Assessor**: Can create/edit assessments
+    - **Manager**: Can view team data
+    - **Engagement**: Can view as engagement contact
+    - **Remediation**: Can manage remediation queue
+    - **Executive**: Dashboard and summary access
+    
+    <Warning>
+      Users can have multiple roles. For example, an assessor might also have manager permissions to oversee their team.
+    </Warning>
+  </Step>
+
+  <Step title="Set Access Level">
+    Choose data visibility scope:
+    
+    ### All Data (Access Level 0)
+    User can see all assessments across all teams. Typically for:
+    - Administrators
+    - Managers with organization-wide oversight
+    - Executives needing complete visibility
+    
+    ### Team Only (Access Level 1)
+    User can only see assessments for their assigned team. Best for:
+    - Team-specific assessors
+    - Team managers
+    - Contractors with limited scope
+    
+    ### User Only (Access Level 2)
+    User can only see assessments they're directly assigned to. Used for:
+    - External consultants
+    - Limited-scope contractors
+    - Engagement contacts with strict access control
+  </Step>
+
+  <Step title="Configure Authentication Method">
+    Select how the user will authenticate:
+    
+    - **Native**: Username/password in Faction database
+    - **LDAP**: Active Directory or LDAP server
+    - **OAuth 2.0**: External OAuth provider
+    - **SAML2**: SAML-based SSO
+    
+    <Tip>
+      Authentication method can be set per-user, allowing mixed environments during migration to SSO.
+    </Tip>
+  </Step>
+
+  <Step title="Save User">
+    Click **Create** to save the user. They can now log in with their credentials.
+  </Step>
+</Steps>
+
+## Managing Teams
+
+Teams organize users and assessments into logical groups:
+
+### Creating a Team
+
+<Steps>
+  <Step title="Navigate to Teams">
+    Go to **Settings > Teams** in the admin interface.
+  </Step>
+
+  <Step title="Create New Team">
+    Click **Add Team** and provide:
+    
+    - **Team Name**: Descriptive name (e.g., "AppSec Team", "East Coast Pentesters")
+    - **Description**: Purpose and scope of the team
+  </Step>
+
+  <Step title="Assign Users">
+    Add existing users to the team or create new users directly into it.
+  </Step>
+</Steps>
+
+### Team Benefits
+
+- **Access Control**: Limit assessment visibility by team
+- **Assignment Pools**: Select assessors from relevant teams
+- **Reporting**: Generate team-specific metrics
+- **Collaboration**: Team members automatically see shared assessments
+- **Workload Distribution**: Balance assessments across team members
+
+## Campaigns and Organization
+
+Campaigns provide another organizational layer:
+
+- **Purpose**: Group related assessments across teams
+- **Use Cases**:
+  - Quarterly testing programs
+  - Compliance initiatives (e.g., "2026 SOC 2 Prep")
+  - Vendor assessment programs
+  - Recurring client engagements
+
+### Creating a Campaign
+
+1. Navigate to **Settings > Campaigns**
+2. Click **Add Campaign**
+3. Enter campaign name and description
+4. Assign assessments to the campaign during creation or later
+
+<Info>
+  Campaigns are referenced in Assessment.java via the `campaign` field (~/workspace/source/src/com/fuse/dao/Assessment.java:72).
+</Info>
+
+## Access Control Matrix
+
+| Role | Create Assessment | Edit Vulnerability | View Reports | Manage Users | Access Remediation Queue |
+|------|-------------------|-------------------|--------------|--------------|-------------------------|
+| Admin | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Assessor | ✓ | ✓ | ✓ | ✗ | ✗ |
+| Manager | ✗ | ✗ | ✓ | ✗ | ✗ |
+| Engagement | ✗ | ✗ | ✓ (assigned only) | ✗ | ✗ |
+| Remediation | ✗ | ✗ | ✓ (assigned only) | ✗ | ✓ |
+| Executive | ✗ | ✗ | ✓ (summaries) | ✗ | ✗ |
+
+## User Account Management
+
+### Deactivating Users
+
+Rather than deleting users (which can break assessment history):
+
+1. Navigate to the user profile
+2. Set **Inactive** status to `true`
+3. Inactive users:
+   - Cannot log in
+   - Don't appear in assignment dropdowns
+   - Retain association with past assessments
+   - Can be reactivated if needed
+
+### Password Management
+
+For native authentication:
+
+- Users can change their own passwords via profile settings
+- Admins can reset passwords for any user
+- Password complexity requirements can be configured system-wide
+- Failed authentication attempts are tracked to prevent brute force
+
+### Login Tracking
+
+Faction tracks:
+
+- **Last Login**: Most recent successful authentication
+- **Login Time**: Current session start time
+- **Failed Auth Count**: Number of consecutive failures
+
+<Warning>
+  Accounts may be locked after excessive failed authentication attempts. Admins can unlock by resetting the failed auth counter.
+</Warning>
+
+## Authentication Methods
+
+### Native Authentication
+
+Standard username/password stored in Faction:
+
+- Simple setup, no external dependencies
+- Password hashing for security
+- Built-in password reset flow
+
+### LDAP Integration
+
+Integrate with Active Directory or LDAP servers:
+
+- Central user management
+- Sync with corporate directory
+- Single source of truth for user data
+- LDAP DN stored per user for binding
+
+### OAuth 2.0
+
+Delegated authentication via OAuth providers:
+
+- Google, Microsoft, GitHub, etc.
+- No password management in Faction
+- Improved security posture
+- User-friendly SSO experience
+
+### SAML2
+
+Enterprise SSO via SAML:
+
+- Compatible with Okta, Auth0, Azure AD
+- Organization-wide SSO policies
+- MFA enforcement at IdP level
+- Audit trail in external system
+
+<Note>
+  Authentication method configuration is done in system settings, not per-user (though users can be tagged with their auth method).
+</Note>
+
+## User Profile and Avatars
+
+Users can customize their profiles:
+
+- **Avatar**: Upload profile picture (stored as GUID)
+- **Display Name**: First and last name
+- **Email**: Contact email for notifications
+- **Preferences**: Personal settings and defaults
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Principle of Least Privilege" icon="shield">
+    Grant only the permissions necessary for each user's role. Avoid making all users admins.
+  </Card>
+  
+  <Card title="Use Team Organization" icon="users">
+    Structure teams by function, geography, or business unit for clear access control.
+  </Card>
+  
+  <Card title="Deactivate, Don't Delete" icon="user-slash">
+    Mark users inactive instead of deleting to preserve assessment history and audit trails.
+  </Card>
+  
+  <Card title="Regular Access Reviews" icon="clipboard-check">
+    Periodically review user permissions and remove unnecessary access.
+  </Card>
+  
+  <Card title="Leverage SSO" icon="key">
+    Use LDAP, OAuth, or SAML for centralized authentication and better security.
+  </Card>
+  
+  <Card title="Monitor Failed Logins" icon="eye">
+    Track failed authentication attempts to detect potential security issues.
+  </Card>
+</CardGroup>
+
+## Related Resources
+
+<CardGroup cols={2}>
+  <Card title="Creating Assessments" icon="file-plus" href="/guides/creating-assessments">
+    Assign team members to assessments
+  </Card>
+  
+  <Card title="Remediation Workflow" icon="rotate" href="/guides/remediation-workflow">
+    Remediation contact responsibilities
+  </Card>
+  
+  <Card title="API Reference" icon="code" href="/api/introduction">
+    Automate user management via API
+  </Card>
+  
+  <Card title="Installation Guide" icon="download" href="/installation">
+    Configure authentication methods
+  </Card>
+</CardGroup>

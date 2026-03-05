@@ -1,0 +1,336 @@
+---
+title: 'OAuth 2.0 / OIDC Authentication'
+description: 'Configure OAuth 2.0 and OpenID Connect for single sign-on'
+---
+
+## Overview
+
+Faction supports OAuth 2.0 and OpenID Connect (OIDC) authentication, enabling single sign-on (SSO) with popular identity providers. This integration is built on the PAC4J framework and supports both OIDC and SAML 2.0 protocols.
+
+## Supported Providers
+
+Faction's OAuth implementation supports any OIDC-compliant identity provider:
+
+<CardGroup cols={2}>
+  <Card title="Azure AD / Entra ID" icon="microsoft">
+    Microsoft's cloud identity platform
+  </Card>
+  <Card title="Okta" icon="shield-halved">
+    Enterprise identity management
+  </Card>
+  <Card title="Google Workspace" icon="google">
+    Google's identity provider
+  </Card>
+  <Card title="Keycloak" icon="key">
+    Open source identity and access management
+  </Card>
+  <Card title="Auth0" icon="lock">
+    Authentication and authorization platform
+  </Card>
+  <Card title="Custom OIDC" icon="server">
+    Any OIDC-compliant provider
+  </Card>
+</CardGroup>
+
+## Configuration
+
+### Environment Variables
+
+Faction requires the following environment variable for OAuth callbacks:
+
+```bash
+FACTION_OAUTH_CALLBACK=https://your-faction-instance.com
+```
+
+<Warning>
+The callback URL must be accessible from your identity provider and should use HTTPS in production.
+</Warning>
+
+### OIDC Configuration
+
+Configure OAuth 2.0 / OIDC in Faction's system settings:
+
+<CodeGroup>
+```yaml OIDC Settings
+ssoEnabled: true
+oauthClientId: your-client-id
+oauthClientSecret: your-client-secret
+oauthDiscoveryURI: https://provider.com/.well-known/openid-configuration
+```
+</CodeGroup>
+
+### Parameter Descriptions
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| `ssoEnabled` | Enable/disable SSO authentication | Yes |
+| `oauthClientId` | Client ID from your identity provider | Yes |
+| `oauthClientSecret` | Client secret (encrypted in database) | Yes |
+| `oauthDiscoveryURI` | OIDC discovery endpoint URL | Yes |
+
+## Provider-Specific Setup
+
+### Azure AD / Entra ID
+
+1. **Register Application** in Azure Portal:
+   - Navigate to **Azure Active Directory** > **App registrations**
+   - Click **New registration**
+   - Set name to "Faction"
+   - Set redirect URI: `https://your-faction-instance.com/oauth/callback`
+
+2. **Configure Application**:
+   - Note the **Application (client) ID**
+   - Create a client secret in **Certificates & secrets**
+   - Note the secret value (shown only once)
+
+3. **Faction Configuration**:
+   <CodeGroup>
+   ```yaml Azure AD
+   ssoEnabled: true
+   oauthClientId: <application-client-id>
+   oauthClientSecret: <client-secret-value>
+   oauthDiscoveryURI: https://login.microsoftonline.com/<tenant-id>/v2.0/.well-known/openid-configuration
+   ```
+   </CodeGroup>
+
+### Google Workspace
+
+1. **Create OAuth 2.0 Client** in Google Cloud Console:
+   - Navigate to **APIs & Services** > **Credentials**
+   - Click **Create Credentials** > **OAuth client ID**
+   - Application type: **Web application**
+   - Authorized redirect URIs: `https://your-faction-instance.com/oauth/callback`
+
+2. **Faction Configuration**:
+   <CodeGroup>
+   ```yaml Google Workspace
+   ssoEnabled: true
+   oauthClientId: <client-id>.apps.googleusercontent.com
+   oauthClientSecret: <client-secret>
+   oauthDiscoveryURI: https://accounts.google.com/.well-known/openid-configuration
+   ```
+   </CodeGroup>
+
+### Okta
+
+1. **Create OIDC Application** in Okta Admin Console:
+   - Navigate to **Applications** > **Create App Integration**
+   - Sign-in method: **OIDC**
+   - Application type: **Web Application**
+   - Sign-in redirect URIs: `https://your-faction-instance.com/oauth/callback`
+
+2. **Faction Configuration**:
+   <CodeGroup>
+   ```yaml Okta
+   ssoEnabled: true
+   oauthClientId: <okta-client-id>
+   oauthClientSecret: <okta-client-secret>
+   oauthDiscoveryURI: https://<your-okta-domain>/.well-known/openid-configuration
+   ```
+   </CodeGroup>
+
+### Keycloak
+
+1. **Create Client** in Keycloak Admin Console:
+   - Navigate to your realm > **Clients** > **Create**
+   - Client ID: `faction`
+   - Access Type: **confidential**
+   - Valid Redirect URIs: `https://your-faction-instance.com/oauth/callback`
+
+2. **Faction Configuration**:
+   <CodeGroup>
+   ```yaml Keycloak
+   ssoEnabled: true
+   oauthClientId: faction
+   oauthClientSecret: <client-secret-from-credentials-tab>
+   oauthDiscoveryURI: https://<keycloak-server>/realms/<realm-name>/.well-known/openid-configuration
+   ```
+   </CodeGroup>
+
+## Callback URLs
+
+Faction uses two callback endpoints for OAuth authentication:
+
+- **OIDC Callback**: `https://your-faction-instance.com/oauth/callback`
+- **SAML2 Callback**: `https://your-faction-instance.com/saml2/callback`
+
+<Info>
+Both callbacks are automatically configured based on the `FACTION_OAUTH_CALLBACK` environment variable.
+</Info>
+
+## User Provisioning
+
+### Automatic Account Creation
+
+When a user authenticates via OAuth for the first time, Faction automatically creates their account using claims from the ID token:
+
+| Claim | Faction Field | Fallback |
+|-------|---------------|----------|
+| `email` / `EmailAddress` | Email | Required |
+| `given_name` | First Name | |
+| `family_name` | Last Name | |
+| `name` | Display Name | |
+
+### Email Matching
+
+Faction uses case-insensitive email matching to link OAuth accounts with existing users. If a user with the same email already exists, they'll be authenticated into that account.
+
+### Claim Mapping
+
+The OAuth implementation extracts email addresses from multiple claim formats:
+
+```java
+// Standard OIDC claim
+profile.getAttribute("email")
+
+// Azure AD claim
+profile.getAttribute("EmailAddress")
+
+// SAML assertion claim
+profile.getAttribute("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress")
+```
+
+Relevant source code: `src/com/fuse/utils/AccessControl.java:75`
+
+## Implementation Details
+
+### PAC4J Configuration
+
+Faction uses the PAC4J security framework with the following configuration:
+
+```java
+// OIDC Configuration
+config.setClientId(oauthClientId)
+config.setSecret(oauthClientSecret)
+config.setDiscoveryURI(oauthDiscoveryURI)
+config.setUseNonce(true)
+config.setPreferredJwsAlgorithm(JWSAlgorithm.RS256)
+```
+
+### Dependencies
+
+Faction includes the following OAuth-related dependencies (from `pom.xml`):
+
+```xml
+<dependency>
+    <groupId>org.pac4j</groupId>
+    <artifactId>jee-pac4j</artifactId>
+    <version>5.0.0</version>
+</dependency>
+<dependency>
+    <groupId>org.pac4j</groupId>
+    <artifactId>pac4j-oidc</artifactId>
+    <version>4.5.7</version>
+</dependency>
+<dependency>
+    <groupId>org.pac4j</groupId>
+    <artifactId>pac4j-saml</artifactId>
+    <version>4.5.7</version>
+</dependency>
+```
+
+Relevant source code:
+- `src/com/fuse/authentication/oauth/SecurityConfigFactory.java`
+- `src/com/fuse/authentication/oauth/OIDCCallbackFilterWrapper.java`
+- `src/com/fuse/dao/SystemSettings.java:586-637`
+
+## Testing Configuration
+
+1. **Enable SSO** in Faction settings
+
+2. **Save configuration** with your provider details
+
+3. **Log out** of Faction
+
+4. Click **Sign in with SSO** on the login page
+
+5. You should be redirected to your identity provider
+
+6. After authentication, you'll be redirected back to Faction
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Redirect URI Mismatch">
+    - Verify the redirect URI in your identity provider matches exactly: `https://your-faction-instance.com/oauth/callback`
+    - Ensure the `FACTION_OAUTH_CALLBACK` environment variable is set correctly
+    - Check for trailing slashes (should not be included)
+  </Accordion>
+
+  <Accordion title="Invalid Client Credentials">
+    - Verify the client ID is correct
+    - Ensure the client secret hasn't expired
+    - Check that the client secret is entered exactly as shown (no extra spaces)
+    - Client secrets are encrypted in the database using Faction's encryption utilities
+  </Accordion>
+
+  <Accordion title="Discovery Endpoint Unreachable">
+    - Verify the discovery URI is correct and accessible
+    - Test the endpoint manually: `curl https://provider.com/.well-known/openid-configuration`
+    - Ensure Faction can reach the identity provider (check firewall rules)
+  </Accordion>
+
+  <Accordion title="Email Claim Not Found">
+    - Verify your identity provider includes the email claim in ID tokens
+    - Check your provider's scope configuration (should include "email" or "profile")
+    - Review Faction logs for the actual claims received
+    - Ensure the user's email is populated in your identity provider
+  </Accordion>
+
+  <Accordion title="User Not Created">
+    - Check that the email claim is present and valid
+    - Verify Faction has database write permissions
+    - Review application logs for error messages
+    - Ensure the email format is valid
+  </Accordion>
+</AccordionGroup>
+
+## Security Considerations
+
+<CardGroup cols={2}>
+  <Card title="Use HTTPS" icon="lock">
+    Always use HTTPS for the callback URL in production. OAuth flows require secure communication.
+  </Card>
+
+  <Card title="Rotate Secrets" icon="arrows-rotate">
+    Regularly rotate client secrets and update them in both your identity provider and Faction.
+  </Card>
+
+  <Card title="Validate Claims" icon="shield-check">
+    Faction validates the email claim before creating accounts. Ensure your provider includes verified email claims.
+  </Card>
+
+  <Card title="Monitor Access" icon="eye">
+    Review OAuth authentication logs to detect unauthorized access attempts.
+  </Card>
+</CardGroup>
+
+## Advanced Configuration
+
+### Custom Parameters
+
+Faction's OIDC configuration supports custom parameters:
+
+```java
+config.addCustomParam("display", "popup")
+config.addCustomParam("prompt", "select_account")
+```
+
+Modify `src/com/fuse/dao/SystemSettings.java:633-634` to add additional custom parameters.
+
+### Session Management
+
+The OAuth callback filter is configured to:
+- Renew sessions after authentication (`setRenewSession(true)`)
+- Support multiple authentication profiles (`setMultiProfile(true)`)
+
+### Role Assignment
+
+All OAuth-authenticated users are assigned the `ROLE_USER` role by default:
+
+```java
+oidcClient.setAuthorizationGenerator((ctx, profile) -> {
+    profile.addRole("ROLE_USER");
+    return Optional.ofNullable(profile);
+});
+```

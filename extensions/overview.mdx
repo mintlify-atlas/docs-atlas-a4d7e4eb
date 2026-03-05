@@ -1,0 +1,124 @@
+---
+title: Extensions Overview
+description: Extend Faction's capabilities with custom plugins and integrations
+---
+
+# Extensions Overview
+
+Faction's extension system allows you to extend and customize the platform's functionality through custom plugins, similar to Burp Extender. Extensions enable you to automate workflows, integrate with third-party tools, and customize report generation.
+
+## What are Faction Extensions?
+
+Faction Extensions are Java-based plugins that hook into key events in your penetration testing workflow. When specific actions occur in Faction (like completing an assessment, creating a vulnerability, or generating a report), your extension code is triggered automatically.
+
+Extensions use the **FactionExtender** library, which provides interfaces for interacting with:
+- Assessments and vulnerability data
+- Verification and retest workflows  
+- Application inventory
+- Report generation
+
+## What You Can Build
+
+Extensions enable powerful automations and integrations:
+
+### Issue Tracker Integration
+Automatically create tickets in Jira, Azure DevOps, or other systems when vulnerabilities are discovered or assessments are completed.
+
+### Custom Workflows
+Chain multiple extensions together to create complex workflows. For example:
+1. Validate vulnerability data
+2. Enrich with threat intelligence
+3. Send to ticketing system
+4. Notify security team
+
+### Report Customization
+Generate custom charts, graphics, and data visualizations that are automatically embedded in your reports.
+
+### External Data Integration
+Pull data from CMDBs, asset management systems, or threat intelligence platforms to enrich your assessments.
+
+### Compliance Automation
+Map vulnerabilities to compliance frameworks and generate compliance-specific reports.
+
+## Extension Use Cases
+
+### Jira Integration
+The official Jira extension automatically creates and updates Jira issues based on vulnerability findings. When an assessment is marked complete, all vulnerabilities are pushed to Jira with proper severity labels and assignees.
+
+### Custom Charts and Graphics
+Extensions can generate bar charts, pie charts, and other visualizations based on assessment data. These graphics are automatically embedded in generated reports.
+
+### Workflow Automation
+Trigger custom scripts when retests pass or fail, send notifications to Slack or email, or update external dashboards with real-time assessment status.
+
+## Extension Lifecycle
+
+Extensions follow a defined lifecycle managed by Faction:
+
+### 1. Installation
+Extensions are uploaded to Faction's App Store as JAR files. The system validates the extension and loads it using a custom classloader.
+
+### 2. Configuration
+Each extension can be configured with custom parameters (API keys, URLs, credentials) through the App Store dashboard.
+
+### 3. Registration
+Faction uses Java's ServiceLoader mechanism to discover and register extension implementations of the FactionExtender interfaces.
+
+### 4. Event Triggering
+When events occur (assessment changes, vulnerability updates, etc.), Faction executes registered extensions in order.
+
+### 5. Execution Order
+Multiple extensions can be chained together. The App Store allows you to reorder extensions, so one extension's output can become another's input.
+
+### 6. Data Persistence
+Extensions receive cloned copies of assessment data. If an extension returns modified data, Faction automatically persists the changes back to the database.
+
+## Event Types
+
+Faction supports five core event types that extensions can hook into:
+
+| Event Type | Description | Use Case |
+|------------|-------------|----------|
+| `INVENTORY` | Application inventory searches | Integrate with CMDBs or asset databases |
+| `ASMT_MANAGER` | Assessment lifecycle events | Trigger workflows when assessments complete |
+| `VULN_MANAGER` | Vulnerability changes | Create tickets when vulnerabilities are added |
+| `VER_MANAGER` | Verification/retest events | Update external systems when retests occur |
+| `REPORT_MANAGER` | Report generation | Add custom content to generated reports |
+
+## Getting Started
+
+To start building extensions:
+
+1. **Review the Development Guide** - See [Extension Development](/extensions/development) for detailed setup instructions
+2. **Explore the API** - Check the [API Reference](/extensions/api-reference) for available interfaces and methods
+3. **Visit the App Store** - Learn how to install and manage extensions in [App Store](/extensions/app-store)
+
+## 1.2 Release: App Store Launch
+
+Faction 1.2 introduced the App Store, making it easier than ever to extend Faction's capabilities. The App Store provides:
+
+- **Visual Dashboard** - Manage all installed extensions from one place
+- **Extension Ordering** - Chain extensions together in custom sequences
+- **Easy Configuration** - Set API keys and parameters through the UI
+- **Official Extensions** - Access vetted extensions like the Jira integration
+- **Community Extensions** - Discover extensions built by the Faction community
+
+The App Store enables powerful scenarios like:
+- Creating Jira tickets automatically when assessments complete
+- Generating custom bar charts and embedding them in reports
+- Integrating with internal ticketing and notification systems
+- Building custom compliance reporting workflows
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="App Store" icon="store" href="/extensions/app-store">
+    Install and manage extensions
+  </Card>
+  <Card title="Development" icon="code" href="/extensions/development">
+    Build your own extensions
+  </Card>
+  <Card title="API Reference" icon="book" href="/extensions/api-reference">
+    Explore the extension API
+  </Card>
+</CardGroup>

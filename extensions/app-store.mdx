@@ -1,0 +1,286 @@
+---
+title: App Store
+description: Install, configure, and manage Faction extensions
+---
+
+# App Store
+
+The Faction App Store is your central hub for discovering, installing, and managing extensions. Introduced in version 1.2, the App Store makes it easy to extend Faction's capabilities without writing code.
+
+## Accessing the App Store
+
+Navigate to the App Store dashboard from the Faction main menu. The dashboard displays:
+
+- **Installed Extensions** - Extensions currently active in your Faction instance
+- **Available Extensions** - Official and community extensions you can install
+- **Extension Status** - Whether each extension is enabled and configured
+- **Execution Order** - The sequence in which extensions are executed
+
+![App Store Dashboard](https://github.com/factionsecurity/faction/assets/2343831/53feb37e-cc66-401c-9ef0-e43fd4dc9f51)
+
+## Installing Extensions
+
+To install an extension:
+
+### From the Official Repository
+
+1. Browse the available extensions in the App Store dashboard
+2. Click on an extension to view its details
+3. Click **Install** to add it to your Faction instance
+4. Configure the extension with required parameters (see Configuration below)
+5. Enable the extension for the event types you want it to handle
+
+### Manual Installation
+
+If you have a custom extension JAR file:
+
+1. Navigate to the App Store dashboard
+2. Click **Upload Extension**
+3. Select your JAR file (must be a valid Faction extension)
+4. Faction validates the extension and extracts metadata
+5. Configure and enable the extension
+
+<Warning>
+Only install extensions from trusted sources. Extensions have full access to your assessment data and can execute arbitrary code.
+</Warning>
+
+## Configuring Extensions
+
+Most extensions require configuration before they can be used:
+
+### Configuration Parameters
+
+Each extension defines its own configuration schema. Common parameters include:
+
+- **API Keys** - Authentication tokens for external services
+- **URLs** - Endpoints for external APIs or webhooks
+- **Project IDs** - Identifiers for external systems (Jira project keys, etc.)
+- **Custom Fields** - Extension-specific settings
+
+### Setting Configuration Values
+
+1. Click the **Configure** button next to an installed extension
+2. Fill in the required parameters
+3. Click **Save Configuration**
+4. Enable the extension for specific event types
+
+### Example: Jira Extension Configuration
+
+```json
+{
+  "jiraUrl": "https://yourcompany.atlassian.net",
+  "username": "faction-integration@yourcompany.com",
+  "apiToken": "your-jira-api-token",
+  "projectKey": "SEC",
+  "issueType": "Bug",
+  "priorityMapping": {
+    "Critical": "Highest",
+    "High": "High",
+    "Medium": "Medium",
+    "Low": "Low"
+  }
+}
+```
+
+## Managing Extension Order
+
+One of the most powerful features of the App Store is the ability to chain extensions together. Extensions execute in order, and each extension can modify the data that flows to the next.
+
+### Reordering Extensions
+
+To change extension execution order:
+
+1. In the App Store dashboard, locate the **Execution Order** section
+2. Drag and drop extensions to reorder them
+3. Click **Save Order**
+4. Changes take effect immediately
+
+![Extension Ordering](https://github.com/factionsecurity/faction/assets/2343831/53feb37e-cc66-401c-9ef0-e43fd4dc9f51)
+
+### Why Order Matters
+
+Consider this workflow:
+
+1. **Data Enrichment Extension** - Adds threat intelligence data to vulnerabilities
+2. **Validation Extension** - Validates that all required fields are populated
+3. **Jira Extension** - Creates tickets with the enriched data
+
+If you run the Jira extension first, it won't have access to the threat intelligence data. Proper ordering ensures data flows correctly through your workflow.
+
+### Chained Workflow Example
+
+Here's a real-world example of chaining extensions:
+
+**Scenario**: Automatically create Jira tickets with custom priority mapping
+
+1. **CVSS Calculator Extension** (Order: 1)
+   - Calculates CVSS scores for each vulnerability
+   - Adds CVSS data to custom fields
+
+2. **Priority Mapper Extension** (Order: 2)
+   - Reads CVSS scores from previous extension
+   - Maps to company-specific priority levels
+   - Updates vulnerability severity
+
+3. **Jira Integration Extension** (Order: 3)
+   - Creates Jira tickets with mapped priorities
+   - Assigns based on severity level
+   - Links related vulnerabilities
+
+## Enabling and Disabling Extensions
+
+Extensions can be enabled or disabled for specific event types:
+
+### Event Type Controls
+
+Each extension can be independently enabled for:
+
+- **Inventory Events** - Application inventory searches
+- **Assessment Events** - Assessment lifecycle changes
+- **Vulnerability Events** - Vulnerability creation and updates
+- **Verification Events** - Retest and verification workflows
+- **Report Events** - Report generation
+
+### Disabling an Extension
+
+To temporarily disable an extension:
+
+1. Navigate to the App Store dashboard
+2. Find the extension you want to disable
+3. Toggle the **Enabled** switch to off
+4. The extension will stop executing but remains configured
+
+### Uninstalling an Extension
+
+To completely remove an extension:
+
+1. Click the **Delete** icon next to the extension
+2. Confirm the removal
+3. The extension and its configuration are permanently deleted
+
+## Official Extensions
+
+Faction provides several official, supported extensions:
+
+### Jira Integration
+
+Automatically create and update Jira issues based on vulnerability findings.
+
+**Features**:
+- Creates issues when assessments are completed
+- Updates issues when vulnerabilities change
+- Supports custom field mapping
+- Configurable priority and severity mapping
+- Links related vulnerabilities
+
+**Event Types**: Assessment Manager, Vulnerability Manager
+
+### Custom Charts Extension
+
+Generate bar charts, pie charts, and other visualizations for your reports.
+
+**Features**:
+- Vulnerability severity distribution charts
+- Trend analysis over time
+- Compliance status visualizations
+- Customizable chart styles and colors
+
+**Event Types**: Report Manager
+
+### Slack Notifications
+
+Send real-time notifications to Slack channels when key events occur.
+
+**Features**:
+- Assessment completion notifications
+- Critical vulnerability alerts
+- Retest status updates
+- Customizable message templates
+
+**Event Types**: Assessment Manager, Verification Manager
+
+## Submitting Your Extension
+
+Built a useful extension? Submit it to the official App Store for the community to use.
+
+### Submission Requirements
+
+Before submitting, ensure your extension:
+
+- Is built using the FactionExtender library (v2.7 or higher)
+- Includes comprehensive documentation
+- Has been tested in a production environment
+- Follows Java best practices and security guidelines
+- Includes proper error handling and logging
+- Does not contain hardcoded credentials or secrets
+
+### Submission Process
+
+1. **Host on GitHub** - Your extension must be in a public GitHub repository
+
+2. **Create Documentation** - Include a README.md with:
+   - What the extension does
+   - Installation instructions
+   - Configuration parameters
+   - Usage examples
+   - Screenshots (if applicable)
+   - Requirements and dependencies
+
+3. **Email Submission** - Send to **develop@factionsecurity.com** with:
+   - Link to your GitHub repository
+   - Brief description (2-3 sentences)
+   - Your contact information
+   - Any special requirements or dependencies
+
+4. **Review Process**:
+   - The Faction team reviews code quality and security
+   - You may receive feedback for improvements
+   - Approved extensions are forked for stability
+   - Your extension is published to the App Store
+
+5. **Attribution** - You'll be credited as the author on the extension listing
+
+For detailed development guidance, see the [Contributing Guidelines](https://github.com/factionsecurity/faction/blob/main/CONTRIBUTING.md).
+
+## Extension Logs
+
+Extensions can log messages that appear in the Faction logs. To view extension logs:
+
+1. Navigate to **Settings** > **System Logs**
+2. Filter by extension name
+3. View execution logs, errors, and debug messages
+
+Proper logging helps troubleshoot extension issues and monitor execution.
+
+## Troubleshooting
+
+### Extension Not Executing
+
+- Verify the extension is enabled for the correct event type
+- Check that configuration parameters are valid
+- Review logs for error messages
+- Ensure the extension JAR is valid and properly formatted
+
+### Configuration Errors
+
+- Validate JSON syntax in configuration
+- Ensure all required parameters are provided
+- Check that API keys and credentials are correct
+- Test external API connectivity
+
+### Ordering Issues
+
+- Review the execution order in the App Store
+- Ensure extensions that depend on each other are properly ordered
+- Check logs to see which extension is failing
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Extension Development" icon="code" href="/extensions/development">
+    Build your own custom extensions
+  </Card>
+  <Card title="API Reference" icon="book" href="/extensions/api-reference">
+    Explore the FactionExtender API
+  </Card>
+</CardGroup>

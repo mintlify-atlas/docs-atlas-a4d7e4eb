@@ -1,0 +1,336 @@
+---
+title: "Users API"
+description: "Manage user accounts, permissions, and account status"
+---
+
+## Overview
+
+The Users API provides endpoints for managing Faction user accounts, including creating users, setting permissions, and enabling/disabling accounts. This API is restricted to administrators and certain operations are limited by the Faction tier.
+
+All endpoints require authentication via the `FACTION-API-KEY` header and Admin role permissions.
+
+---
+
+## Add User
+
+<RequestExample>
+```bash POST /api/users/addUser
+curl -X POST "https://your-faction-instance.com/api/users/addUser" \
+  -H "FACTION-API-KEY: your-api-key" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "username=jdoe" \
+  -d "email=jdoe@example.com" \
+  -d "fname=John" \
+  -d "lname=Doe" \
+  -d "team=Security Team" \
+  -d "authMethod=LDAP" \
+  -d "verify=true" \
+  -d "isAssessor=true" \
+  -d "isManager=false"
+```
+</RequestExample>
+
+Creates a new user in Faction with specified roles and permissions.
+
+### Authentication
+
+<ParamField header="FACTION-API-KEY" type="string" required>
+  API authentication key (requires Admin role)
+</ParamField>
+
+### Form Parameters
+
+<ParamField body="username" type="string" required>
+  Username for the new account
+</ParamField>
+
+<ParamField body="email" type="string" required>
+  Email address
+</ParamField>
+
+<ParamField body="fname" type="string" required>
+  First name
+</ParamField>
+
+<ParamField body="lname" type="string" required>
+  Last name
+</ParamField>
+
+<ParamField body="team" type="string" required>
+  Team name (must already exist in the system)
+</ParamField>
+
+<ParamField body="authMethod" type="string" required>
+  Authentication method (e.g., "LDAP", "LOCAL", "SSO")
+</ParamField>
+
+<ParamField body="verify" type="boolean">
+  Send verification email to user. If true, sends a registration link to the user's email address.
+</ParamField>
+
+<ParamField body="isAssessor" type="boolean">
+  Grant Assessor role permissions
+</ParamField>
+
+<ParamField body="isAdmin" type="boolean">
+  Grant Admin role permissions
+</ParamField>
+
+<ParamField body="isRemediation" type="boolean">
+  Grant Remediation role permissions
+</ParamField>
+
+<ParamField body="isEngage" type="boolean">
+  Grant Engagement/Scheduler role permissions
+</ParamField>
+
+<ParamField body="isManager" type="boolean">
+  Grant Manager role permissions
+</ParamField>
+
+### User Roles
+
+<Expandable title="Role Descriptions">
+
+**Assessor**
+- Conduct security assessments
+- Add and manage vulnerabilities
+- Access assessment queue
+- View assigned assessments
+
+**Admin**
+- Manage users and teams
+- Configure system settings
+- Access audit logs
+- Full system access
+
+**Remediation**
+- View vulnerabilities
+- Track remediation status
+- Update vulnerability statuses
+- Access remediation tracking
+
+**Engagement/Scheduler**
+- Create assessments
+- Schedule assessments to assessors
+- Manage assessment lifecycle
+- Configure assessment parameters
+
+**Manager**
+- View all assessments
+- Manage vulnerabilities
+- Access reports
+- Oversight capabilities
+
+</Expandable>
+
+### Verification Email
+
+When `verify=true`:
+- A random password is generated and hashed
+- A registration link is sent to the user's email
+- User must click the link to set their password
+- Account cannot be accessed until password is set
+
+### Status Codes
+
+- `200` - Success: User created
+- `400` - User already exists, invalid username, or team doesn't exist
+- `401` - Not authorized (requires Admin role)
+
+### Notes
+
+- This endpoint is not available in the "consultant" tier
+- If a user with the same username already exists, the request will fail
+- The specified team must exist in the system before creating the user
+- Multiple roles can be assigned to a single user
+
+---
+
+## Disable User
+
+<RequestExample>
+```bash POST /api/users/disableUser
+curl -X POST "https://your-faction-instance.com/api/users/disableUser" \
+  -H "FACTION-API-KEY: your-api-key" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "username=jdoe"
+```
+</RequestExample>
+
+Sets a user account to inactive state. The user will not be able to log in until the account is unlocked.
+
+### Authentication
+
+<ParamField header="FACTION-API-KEY" type="string" required>
+  API authentication key (requires Admin role)
+</ParamField>
+
+### Form Parameters
+
+<ParamField body="username" type="string" required>
+  Username to deactivate
+</ParamField>
+
+### Status Codes
+
+- `200` - Success: User disabled
+- `401` - Not authorized or multiple users with same username
+- `400` - Error occurred
+
+### Notes
+
+- This endpoint is not available in the "consultant" tier
+- Disabled users cannot log in until their account is unlocked
+- User data and history are preserved
+
+---
+
+## Unlock User
+
+<RequestExample>
+```bash POST /api/users/unlockUser
+curl -X POST "https://your-faction-instance.com/api/users/unlockUser" \
+  -H "FACTION-API-KEY: your-api-key" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "username=jdoe" \
+  -d "uioli=true"
+```
+</RequestExample>
+
+Reactivates a disabled user account and optionally resets the "use it or lose it" inactivity timer.
+
+### Authentication
+
+<ParamField header="FACTION-API-KEY" type="string" required>
+  API authentication key (requires Admin role)
+</ParamField>
+
+### Form Parameters
+
+<ParamField body="username" type="string" required>
+  Username to activate
+</ParamField>
+
+<ParamField body="uioli" type="boolean">
+  Reset the "use it or lose it" inactivity timer. When true, updates the last login timestamp to prevent the account from being automatically disabled due to inactivity.
+</ParamField>
+
+### Use It or Lose It (UIOLI)
+
+The `uioli` parameter controls the inactivity timer:
+- When set to `true`, the user's last login date is updated to the current date
+- This prevents the account from being automatically disabled for inactivity
+- Useful when unlocking accounts that have been inactive for extended periods
+
+### Status Codes
+
+- `200` - Success: User unlocked
+- `401` - Not authorized or multiple users with same username
+- `400` - Error occurred
+
+### Notes
+
+- This endpoint is not available in the "consultant" tier
+- Unlocking a user immediately allows them to log in
+- Use the `uioli` parameter to prevent immediate re-locking due to inactivity policies
+
+---
+
+## Authorization Requirements
+
+All Users API endpoints require:
+- Valid `FACTION-API-KEY` header
+- Admin role permissions
+- Non-consultant tier instance
+
+## User Management Workflow
+
+<Steps>
+  <Step title="Create User">
+    Use the Add User endpoint to create a new account with appropriate roles
+  </Step>
+  
+  <Step title="Send Verification (Optional)">
+    If `verify=true`, user receives email with registration link
+  </Step>
+  
+  <Step title="User Sets Password">
+    User clicks link and sets their password (if verification enabled)
+  </Step>
+  
+  <Step title="User Access">
+    User can now log in with assigned roles and permissions
+  </Step>
+  
+  <Step title="Disable if Needed">
+    Use Disable User endpoint to temporarily revoke access
+  </Step>
+  
+  <Step title="Unlock When Ready">
+    Use Unlock User endpoint to restore access
+  </Step>
+</Steps>
+
+## Integration Examples
+
+### SSO Integration
+
+When integrating with SSO:
+1. Set `authMethod` to your SSO provider (e.g., "SAML", "OAuth2")
+2. Set `verify=false` to skip email verification
+3. User account is created with empty password
+4. Authentication is handled by SSO provider
+
+```bash
+curl -X POST "https://your-faction-instance.com/api/users/addUser" \
+  -H "FACTION-API-KEY: your-api-key" \
+  -d "username=jdoe" \
+  -d "email=jdoe@example.com" \
+  -d "fname=John" \
+  -d "lname=Doe" \
+  -d "team=Security Team" \
+  -d "authMethod=SAML" \
+  -d "verify=false" \
+  -d "isAssessor=true"
+```
+
+### Automated User Provisioning
+
+For automated provisioning workflows:
+1. Create user with `verify=true`
+2. System sends registration email automatically
+3. User completes self-service registration
+4. No manual password distribution needed
+
+## Error Handling
+
+### Common Errors
+
+**User Already Exists**
+```json
+[{ "result": "ERROR", "message": "User Already Exists" }]
+```
+
+**Invalid Team**
+```json
+[{ "result": "ERROR", "message": "Team Name Does not exist" }]
+```
+
+**Not Authorized**
+```json
+[{ "result": "ERROR", "message": "Not Authorized" }]
+```
+
+**Invalid Username**
+```json
+[{ "result": "ERROR", "message": "User Name Invalid" }]
+```
+
+## Best Practices
+
+- **Role Assignment**: Only assign roles that users actually need
+- **Team Organization**: Ensure teams are created before adding users
+- **Email Verification**: Use `verify=true` for better security unless using SSO
+- **Regular Audits**: Periodically review and disable unused accounts
+- **UIOLI Management**: Use the `uioli` parameter when unlocking long-inactive accounts

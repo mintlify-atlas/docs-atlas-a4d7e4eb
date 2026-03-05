@@ -1,0 +1,638 @@
+---
+title: "Assessments API"
+description: "Manage security assessments, vulnerabilities, and assessment data"
+---
+
+## Overview
+
+The Assessments API provides endpoints for managing security assessments throughout their lifecycle. This includes retrieving assessment queues, getting assessment details, updating assessment fields, managing vulnerabilities, and accessing assessment history.
+
+All endpoints require authentication via the `FACTION-API-KEY` header.
+
+---
+
+## Get Assessment Queue
+
+<RequestExample>
+```bash GET /api/assessments/queue
+curl -X GET "https://your-faction-instance.com/api/assessments/queue" \
+  -H "FACTION-API-KEY: your-api-key"
+```
+</RequestExample>
+
+Retrieves the assessment queue for the authenticated user. Returns all non-completed assessments assigned to the user.
+
+### Authentication
+
+<ParamField header="FACTION-API-KEY" type="string" required>
+  API authentication key for the user
+</ParamField>
+
+### Response
+
+Returns an array of `AssessmentDTO` objects.
+
+<ResponseField name="id" type="long">
+  Assessment ID
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Assessment name
+</ResponseField>
+
+<ResponseField name="appId" type="string">
+  Application ID (can span multiple assessments)
+</ResponseField>
+
+<ResponseField name="start" type="date">
+  Assessment start date
+</ResponseField>
+
+<ResponseField name="end" type="date">
+  Assessment end date
+</ResponseField>
+
+<ResponseField name="customFields" type="object">
+  Custom field key-value pairs
+</ResponseField>
+
+### Status Codes
+
+- `200` - Success: Assessor queue returned
+- `401` - Not authorized
+- `500` - Error retrieving assessments
+
+---
+
+## Get Assessment Details
+
+<RequestExample>
+```bash GET /api/assessments/{aid}
+curl -X GET "https://your-faction-instance.com/api/assessments/123" \
+  -H "FACTION-API-KEY: your-api-key"
+```
+</RequestExample>
+
+Retrieves full details for a specific assessment by ID, including custom fields.
+
+### Path Parameters
+
+<ParamField path="aid" type="long" required>
+  Assessment ID
+</ParamField>
+
+### Authentication
+
+<ParamField header="FACTION-API-KEY" type="string" required>
+  API authentication key
+</ParamField>
+
+### Authorization
+
+User must be:
+- The assigned assessor
+- A manager
+- The engagement contact
+- The remediation contact
+
+### Response
+
+Returns an `AssessmentDTO` object with complete assessment information.
+
+<ResponseField name="id" type="long">
+  Assessment ID
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Assessment name
+</ResponseField>
+
+<ResponseField name="notes" type="string">
+  Assessment notes
+</ResponseField>
+
+<ResponseField name="summary" type="string">
+  Assessment summary
+</ResponseField>
+
+<ResponseField name="distributionList" type="string">
+  Email distribution list
+</ResponseField>
+
+<ResponseField name="customFields" type="object">
+  Custom field key-value pairs for this assessment
+</ResponseField>
+
+### Status Codes
+
+- `200` - Success: Assessment details returned
+- `400` - Assessment does not exist
+- `401` - Not authorized for this assessment
+- `500` - Failed to serialize response
+
+---
+
+## Update Assessment
+
+<RequestExample>
+```bash POST /api/assessments/{aid}
+curl -X POST "https://your-faction-instance.com/api/assessments/123" \
+  -H "FACTION-API-KEY: your-api-key" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "notes=Updated assessment notes" \
+  -d "summary=Executive summary" \
+  -d 'customFields={"ClientContact":"John Doe","ProjectCode":"PROJ-2024"}'
+```
+</RequestExample>
+
+Updates allowed assessment fields including notes, summary, distribution list, and custom fields.
+
+### Path Parameters
+
+<ParamField path="aid" type="long" required>
+  Assessment ID
+</ParamField>
+
+### Authentication
+
+<ParamField header="FACTION-API-KEY" type="string" required>
+  API authentication key
+</ParamField>
+
+### Form Parameters
+
+<ParamField body="notes" type="string">
+  Assessment notes
+</ParamField>
+
+<ParamField body="summary" type="string">
+  Assessment summary
+</ParamField>
+
+<ParamField body="distributionList" type="string">
+  Semicolon-delimited distribution list
+</ParamField>
+
+<ParamField body="customFields" type="string">
+  JSON object with custom field key-value pairs. Keys must match existing custom field definitions for the assessment type.
+</ParamField>
+
+### Custom Fields Format
+
+Custom fields are provided as a JSON object:
+
+```json
+{
+  "FieldKey1": "Value1",
+  "FieldKey2": "Value2"
+}
+```
+
+### Status Codes
+
+- `200` - Success: Update successful
+- `400` - Assessment does not exist or locked for peer review
+- `401` - Not authorized
+
+---
+
+## Get Assessment Vulnerabilities
+
+<RequestExample>
+```bash GET /api/assessments/vulns/{aid}
+curl -X GET "https://your-faction-instance.com/api/assessments/vulns/123" \
+  -H "FACTION-API-KEY: your-api-key"
+```
+</RequestExample>
+
+Retrieves all vulnerabilities for a specific assessment.
+
+### Path Parameters
+
+<ParamField path="aid" type="long" required>
+  Assessment ID
+</ParamField>
+
+### Authentication
+
+<ParamField header="FACTION-API-KEY" type="string" required>
+  API authentication key
+</ParamField>
+
+### Response
+
+Returns an array of `VulnerabilityDTO` objects.
+
+<ResponseField name="id" type="long">
+  Vulnerability ID
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Vulnerability name
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  Vulnerability description (HTML/Markdown)
+</ResponseField>
+
+<ResponseField name="recommendation" type="string">
+  Remediation recommendation (HTML/Markdown)
+</ResponseField>
+
+<ResponseField name="details" type="string">
+  Exploit details and proof of concept
+</ResponseField>
+
+<ResponseField name="categoryId" type="long">
+  Category ID
+</ResponseField>
+
+<ResponseField name="severityId" type="integer">
+  Severity level (0-9)
+</ResponseField>
+
+<ResponseField name="impact" type="integer">
+  Impact score (0-9)
+</ResponseField>
+
+<ResponseField name="likelihood" type="integer">
+  Likelihood score (0-9)
+</ResponseField>
+
+<ResponseField name="cvssScore" type="string">
+  CVSS score
+</ResponseField>
+
+<ResponseField name="cvssString" type="string">
+  CVSS vector string
+</ResponseField>
+
+<ResponseField name="customFields" type="array">
+  Array of custom field objects
+</ResponseField>
+
+### Status Codes
+
+- `200` - Success: Vulnerabilities returned
+- `401` - Not authorized
+
+---
+
+## Add Vulnerability
+
+<RequestExample>
+```bash POST /api/assessments/addVuln/{aid}
+curl -X POST "https://your-faction-instance.com/api/assessments/addVuln/123" \
+  -H "FACTION-API-KEY: your-api-key" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "name=SQL Injection" \
+  -d "vulnTemplateId=45" \
+  -d "description=$(echo 'Vulnerability description' | base64)" \
+  -d "details=$(echo 'Exploit steps' | base64)" \
+  -d "severity=7" \
+  -d "impact=8" \
+  -d "likelihood=6" \
+  -d 'customFields={"AffectedURL":"https://example.com/login"}'
+```
+</RequestExample>
+
+Creates a new vulnerability for the specified assessment. All Base64 encoded inputs support HTML and Markdown syntax.
+
+### Path Parameters
+
+<ParamField path="aid" type="long" required>
+  Assessment ID
+</ParamField>
+
+### Authentication
+
+<ParamField header="FACTION-API-KEY" type="string" required>
+  API authentication key
+</ParamField>
+
+### Form Parameters
+
+<ParamField body="name" type="string" required>
+  Vulnerability name
+</ParamField>
+
+<ParamField body="vulnTemplateId" type="long">
+  Vulnerability template ID to use as base
+</ParamField>
+
+<ParamField body="description" type="string">
+  Vulnerability description (Base64 encoded, supports HTML/Markdown)
+</ParamField>
+
+<ParamField body="recommendation" type="string">
+  Remediation recommendation (Base64 encoded, supports HTML/Markdown)
+</ParamField>
+
+<ParamField body="details" type="string">
+  Exploit details and proof of concept (Base64 encoded, supports HTML/Markdown)
+</ParamField>
+
+<ParamField body="categoryId" type="long">
+  Vulnerability category ID
+</ParamField>
+
+<ParamField body="severity" type="integer">
+  Severity ID (0-9)
+</ParamField>
+
+<ParamField body="impact" type="integer">
+  Impact score (0-9). Defaults to severity if not provided.
+</ParamField>
+
+<ParamField body="likelihood" type="integer">
+  Likelihood score (0-9). Defaults to severity if not provided.
+</ParamField>
+
+<ParamField body="cvssScore" type="string">
+  CVSS score
+</ParamField>
+
+<ParamField body="cvssString" type="string">
+  CVSS vector string
+</ParamField>
+
+<ParamField body="section" type="string">
+  Report section (Enterprise feature)
+</ParamField>
+
+<ParamField body="customFields" type="string">
+  JSON object with custom field key-value pairs
+</ParamField>
+
+### Response
+
+<ResponseField name="vid" type="long">
+  ID of the newly created vulnerability
+</ResponseField>
+
+### Status Codes
+
+- `200` - Success: Returns the new vulnerability ID
+- `400` - Bad request (assessment not found, locked for peer review, invalid parameters)
+- `401` - Not authorized
+
+---
+
+## Add Vulnerability from Template
+
+<RequestExample>
+```bash POST /api/assessments/addDefaultVuln/{aid}/{id}
+curl -X POST "https://your-faction-instance.com/api/assessments/addDefaultVuln/123/45" \
+  -H "FACTION-API-KEY: your-api-key" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "name=SQL Injection in Login Form" \
+  -d "details=$(echo 'Specific exploit steps for this instance' | base64)" \
+  -d "cvssScore=7.5"
+```
+</RequestExample>
+
+Adds a new vulnerability based on an internal database vulnerability template. Auto-populates all non-required fields from the template.
+
+### Path Parameters
+
+<ParamField path="aid" type="long" required>
+  Assessment ID
+</ParamField>
+
+<ParamField path="id" type="long" required>
+  Vulnerability template ID
+</ParamField>
+
+### Authentication
+
+<ParamField header="FACTION-API-KEY" type="string" required>
+  API authentication key
+</ParamField>
+
+### Form Parameters
+
+<ParamField body="name" type="string" required>
+  Vulnerability name (can override template name)
+</ParamField>
+
+<ParamField body="details" type="string">
+  Exploit details (Base64 encoded)
+</ParamField>
+
+<ParamField body="severity" type="integer">
+  Severity override (0-9)
+</ParamField>
+
+<ParamField body="impact" type="integer">
+  Impact override (0-9)
+</ParamField>
+
+<ParamField body="likelihood" type="integer">
+  Likelihood override (0-9)
+</ParamField>
+
+<ParamField body="cvssScore" type="string">
+  CVSS score override
+</ParamField>
+
+<ParamField body="cvssString" type="string">
+  CVSS string override
+</ParamField>
+
+<ParamField body="section" type="string">
+  Report section (Enterprise feature)
+</ParamField>
+
+<ParamField body="customFields" type="string">
+  JSON object with custom field key-value pairs
+</ParamField>
+
+### Status Codes
+
+- `200` - Success: Vulnerability created
+- `400` - Bad request
+- `401` - Not authorized
+
+---
+
+## Get Assessment History
+
+<RequestExample>
+```bash GET /api/assessments/history/{appid}
+curl -X GET "https://your-faction-instance.com/api/assessments/history/APP-2024-001" \
+  -H "FACTION-API-KEY: your-api-key"
+```
+</RequestExample>
+
+Retrieves vulnerability history for all assessments of a specific application. Application ID is not the same as Assessment ID - an Application ID can span multiple assessments.
+
+### Path Parameters
+
+<ParamField path="appid" type="string" required>
+  Application ID
+</ParamField>
+
+### Authentication
+
+<ParamField header="FACTION-API-KEY" type="string" required>
+  API authentication key
+</ParamField>
+
+### Response
+
+Returns an array of `VulnerabilityDTO` objects from all assessments for the application.
+
+### Status Codes
+
+- `200` - Success: Vulnerability history returned
+- `401` - Not authorized or no assessment found
+
+---
+
+## Create Assessment
+
+<RequestExample>
+```bash POST /api/assessments/create
+curl -X POST "https://your-faction-instance.com/api/assessments/create" \
+  -H "FACTION-API-KEY: your-api-key" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "appName=Web Application" \
+  -d "start=2024-03-01" \
+  -d "end=2024-03-15" \
+  -d "assessors=assessor1@example.com;assessor2@example.com" \
+  -d "engagement_username=manager@example.com" \
+  -d "remediation_username=developer@example.com" \
+  -d "type=Web Application" \
+  -d "campaign=Q1 2024 Security Assessments" \
+  -d "auto_create_campaigns=true" \
+  -d "scope=Application scope and credentials"
+```
+</RequestExample>
+
+Creates a new assessment and schedules it to assessor(s). Can auto-create users and teams if they don't exist in the system.
+
+### Authentication
+
+<ParamField header="FACTION-API-KEY" type="string" required>
+  API authentication key (requires Engagement or Manager role)
+</ParamField>
+
+### Form Parameters
+
+<ParamField body="appid" type="string">
+  Application ID (links to existing application)
+</ParamField>
+
+<ParamField body="appName" type="string" required>
+  Application name (required if appid not provided)
+</ParamField>
+
+<ParamField body="start" type="date" required>
+  Assessment start date (YYYY-MM-DD format)
+</ParamField>
+
+<ParamField body="end" type="date" required>
+  Assessment end date (YYYY-MM-DD format)
+</ParamField>
+
+<ParamField body="assessors" type="string" required>
+  Semicolon-delimited list of assessor usernames
+</ParamField>
+
+<ParamField body="distro" type="string">
+  Semicolon-delimited distribution list
+</ParamField>
+
+<ParamField body="engagement_username" type="string" required>
+  Engagement contact username
+</ParamField>
+
+<ParamField body="remediation_username" type="string" required>
+  Remediation contact username
+</ParamField>
+
+<ParamField body="type" type="string" required>
+  Assessment type (e.g., "Web Application", "Mobile", "Network")
+</ParamField>
+
+<ParamField body="scope" type="string">
+  Scope and credentials for assessors
+</ParamField>
+
+<ParamField body="campaign" type="string" required>
+  Campaign name
+</ParamField>
+
+<ParamField body="auto_create_campaigns" type="boolean" required>
+  Create campaign if it doesn't exist
+</ParamField>
+
+### Status Codes
+
+- `200` - Success: Assessment created
+- `400` - Bad request
+- `401` - Not authorized
+
+---
+
+## Get Vulnerability Details
+
+<RequestExample>
+```bash GET /api/assessments/vuln/{vid}
+curl -X GET "https://your-faction-instance.com/api/assessments/vuln/456" \
+  -H "FACTION-API-KEY: your-api-key"
+```
+</RequestExample>
+
+Retrieves detailed information for a specific vulnerability including exploit steps.
+
+### Path Parameters
+
+<ParamField path="vid" type="long" required>
+  Vulnerability ID
+</ParamField>
+
+### Authentication
+
+<ParamField header="FACTION-API-KEY" type="string" required>
+  API authentication key
+</ParamField>
+
+### Response
+
+Returns a `VulnerabilityDTO` object with complete vulnerability information including custom fields.
+
+### Status Codes
+
+- `200` - Success: Vulnerability details returned
+- `400` - Vulnerability does not exist
+- `401` - Not authorized
+
+---
+
+## Authorization Requirements
+
+### Assessment Queue
+- Requires: Assessor or Manager role
+
+### Get/Update Assessment
+- Requires one of:
+  - Manager role
+  - Assigned assessor
+  - Engagement contact
+  - Remediation contact
+
+### Create Assessment
+- Requires: Engagement or Manager role
+
+### Add Vulnerabilities
+- Requires: Assessor or Manager role
+- Assessment must not be locked for peer review
+- User must be assigned to the assessment
+
+## Notes
+
+- **Base64 Encoding**: Description, recommendation, and details fields accept Base64 encoded content that supports HTML and Markdown syntax.
+- **Peer Review Lock**: Assessments locked for peer review cannot be modified until the review is complete.
+- **Custom Fields**: Custom field keys must match existing custom field definitions configured for the assessment type.
+- **Application vs Assessment**: An Application ID can have multiple assessments over time. Use the history endpoint to retrieve all vulnerabilities across assessments.

@@ -1,0 +1,390 @@
+---
+title: 'Collaboration'
+description: 'Real-time collaboration features for distributed security teams'
+icon: 'people-group'
+---
+
+## Overview
+
+Faction provides comprehensive collaboration capabilities enabling distributed security teams to work together efficiently on assessments. Features include real-time event streaming, multi-assessor workflows, concurrent editing protection, and Burp Suite integration for live findings submission.
+
+## Team-Based Assessments
+
+Multiple assessors can collaborate on the same assessment simultaneously:
+
+```java
+// Assessment.java:45 - Multiple assessors per assessment
+@OneToMany(fetch = FetchType.LAZY)
+private List<User> assessor;
+```
+
+### Collaboration Roles
+
+<CardGroup cols={3}>
+  <Card title="Assessors" icon="user-shield">
+    Active testers performing security evaluation
+  </Card>
+  <Card title="Engagement Manager" icon="user-tie">
+    Coordinator managing client communications
+  </Card>
+  <Card title="Remediation Contact" icon="user-gear">
+    Developer or security team receiving findings
+  </Card>
+</CardGroup>
+
+Each role has specific permissions and responsibilities within the assessment workflow.
+
+## Real-Time Event Streaming
+
+Faction implements Server-Side Events (SSE) for real-time collaboration through the `EventStreamServlet` (src/com/fuse/servlets/EventStreamServlet.java).
+
+### Event Stream Architecture
+
+```java
+/**
+ * Server-Side Events (SSE) Servlet
+ * 
+ * Handles SSE connections using Servlet 3.0+ async support.
+ */
+public class EventStreamServlet extends HttpServlet {
+    // Thread-safe map to store all connected SSE clients by session ID
+    private static final Map<String, AsyncContext> CLIENTS = 
+        new ConcurrentHashMap<>();
+}
+```
+
+### Event Types
+
+The event stream broadcasts updates for:
+
+- **Vulnerability additions**: New findings added by assessors
+- **Assessment updates**: Changes to summary, risk analysis, or metadata
+- **Lock notifications**: When sections are locked/unlocked for editing
+- **Status changes**: Workflow state transitions
+- **Custom messages**: Application-specific events
+
+### Connection Management
+
+```java
+// Establishing SSE connection
+response.setContentType("text/event-stream");
+response.setCharacterEncoding("UTF-8");
+response.setHeader("Cache-Control", "no-cache");
+response.setHeader("Connection", "keep-alive");
+
+// Track connected clients
+String sessionId = request.getSession().getId();
+CLIENTS.put(sessionId, asyncContext);
+```
+
+<Info>
+SSE provides a persistent HTTP connection that allows the server to push updates to clients immediately, without polling.
+</Info>
+
+## Broadcasting Events
+
+The system broadcasts events to all connected clients or specific assessments:
+
+```java
+// EventStreamServlet broadcasting (from api/assessments.java:1804)
+EventStreamServlet.broadcastEvent(
+    "message",           // Event type
+    messageJson,         // Event data (JSON)
+    null,                // Session ID (null = all sessions)
+    String.valueOf(assessmentId)  // Assessment filter
+);
+```
+
+### Event Filtering
+
+Events can be targeted to:
+- **Specific assessment**: Only users viewing that assessment
+- **Specific session**: Only a particular user
+- **All clients**: Broadcast to everyone (system-wide notifications)
+
+### Example: Vulnerability Creation
+
+```java
+// AddVulnerability.java:686 - Broadcasting new vulnerability
+EventStreamServlet.broadcastEvent(
+    "message", 
+    messageJson,
+    sessionId, 
+    "" + assessmentId
+);
+```
+
+When one assessor adds a vulnerability, all other assessors viewing that assessment receive an instant notification.
+
+## Concurrent Editing Protection
+
+Faction prevents data loss through section-level locking:
+
+### Assessment-Level Locks
+
+```java
+// Assessment.java:97-116 - Section locks
+private Boolean notesLock = false;
+private User notes_locked_by;
+private Date notes_lock_time;
+
+private Boolean summary_lock = false;
+private User summary_locked_by;
+private Date summary_lock_time;
+
+private Boolean risk_lock = false;
+private User risk_locked_by;
+private Date risk_lock_time;
+```
+
+### Vulnerability-Level Locks
+
+```java
+// Vulnerability.java:69-80 - Field-level locks
+private Boolean desc_lock = false;
+private User desc_locked_by;
+private Date desc_lock_time;
+
+private Boolean rec_lock = false;
+private User rec_locked_by;
+private Date rec_lock_time;
+
+private Boolean detail_lock = false;
+private User detail_locked_by;
+private Date detail_lock_time;
+```
+
+### Lock Behavior
+
+<Steps>
+  <Step title="User Begins Editing">
+    Section lock acquired, stored with user ID and timestamp
+  </Step>
+  <Step title="Other Users Notified">
+    SSE event broadcasts lock status to other connected users
+  </Step>
+  <Step title="Editing Prevented">
+    UI prevents other users from editing locked sections
+  </Step>
+  <Step title="Lock Released">
+    User saves or cancels, lock removed, others can now edit
+  </Step>
+</Steps>
+
+<Warning>
+Locks are automatically released if a user's session expires or they navigate away, preventing permanent lock situations.
+</Warning>
+
+## Burp Suite Integration
+
+The [Faction Burp Extension](https://github.com/factionsecurity/Faction-Burp) enables real-time collaboration between Burp Suite and Faction.
+
+### Live Findings Submission
+
+<CardGroup cols={2}>
+  <Card title="Direct from Burp" icon="tower-broadcast">
+    Send findings directly from Burp Suite to Faction assessments
+  </Card>
+  <Card title="Instant Availability" icon="bolt">
+    Vulnerabilities appear in Faction immediately for all team members
+  </Card>
+  <Card title="Context Preserved" icon="clipboard">
+    HTTP requests, responses, and notes transferred automatically
+  </Card>
+  <Card title="Reduce Manual Entry" icon="gauge-high">
+    Eliminate copy-paste between tools, focus on testing
+  </Card>
+</CardGroup>
+
+### Workflow Integration
+
+1. **Assessor discovers vulnerability** in Burp Suite during testing
+2. **Right-click → Send to Faction** from Burp context menu
+3. **Burp extension** calls Faction API to create vulnerability
+4. **SSE broadcasts** vulnerability addition to all connected users
+5. **Team members see finding** instantly in their browsers
+6. **Collaborative editing** begins immediately on the new finding
+
+<Tip>
+Multiple assessors can use Burp Suite simultaneously, all feeding findings into the same assessment in real-time.
+</Tip>
+
+## Notebook Collaboration
+
+Assessors can maintain separate notes or collaborate on shared notes:
+
+```java
+// Assessment.java:58 - Multiple notes per assessment
+@OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+private List<Note> notebook = new ArrayList<>();
+```
+
+Each note tracks:
+- **Creator**: Original author (assessor)
+- **Last editor**: Most recent modifier
+- **Timestamps**: Creation and update times
+- **Name**: Note identifier for organization
+
+### Note Management
+
+```java
+// Assessment.java:529-544 - Note operations
+public Note getNoteById(Long noteId) {
+    return this.notebook.stream()
+        .filter(note -> note.getId().equals(noteId))
+        .findFirst()
+        .orElse(null);
+}
+
+public Note updateNoteById(Long noteId, String name, String noteStr, User updatedBy) {
+    Note note = this.getNoteById(noteId);
+    note.setName(name);
+    note.setNote(noteStr);
+    note.setUpdatedBy(updatedBy);
+    note.setUpdated(new Date());
+    return note;
+}
+```
+
+## Event Monitoring
+
+Administrators can monitor collaboration activity:
+
+```java
+// Events.java:111-112 - System metrics
+int connectedClients = EventStreamServlet.getConnectedClientsCount();
+int totalEvents = EventStreamServlet.getTotalEventsCount();
+```
+
+### Metrics Available
+
+- **Connected clients**: Number of active SSE connections
+- **Total events**: Cumulative events broadcast
+- **Events per assessment**: Activity level per assessment
+- **Active users**: Who is currently working
+
+## File Sharing
+
+Assessments support file attachments for sharing evidence:
+
+```java
+// Assessment.java:81 - Image attachments
+@OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval=true)
+private List<Image> images = new ArrayList<>();
+```
+
+Team members can:
+- Upload screenshots and evidence
+- Attach supporting documents
+- Share POC code or scripts
+- Maintain assessment-specific resources
+
+## Distribution Lists
+
+Manage stakeholder communications:
+
+```java
+// Assessment.java:59 - Email distribution
+private String DistributionList;
+```
+
+Distribution lists enable:
+- Automated report delivery
+- Status update notifications
+- Stakeholder communications
+- Escalation paths
+
+## Access Management
+
+Control who can access assessment data:
+
+```java
+// Assessment.java:60 - Access documentation
+private String AccessNotes;
+```
+
+Use for:
+- VPN credentials
+- Application URLs
+- Test account credentials
+- Access restrictions and requirements
+
+<Warning>
+Store sensitive credentials securely. Consider using a password manager integration for production environments.
+</Warning>
+
+## Campaign Coordination
+
+Coordinate related assessments across teams:
+
+```java
+// Assessment.java:72 - Campaign grouping
+@ManyToOne
+private Campaign campaign;
+```
+
+Campaigns enable:
+- Multi-team coordination
+- Related assessment tracking
+- Program-level reporting
+- Historical trend analysis
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Establish Communication Norms">
+    Define when to use SSE notifications vs. external communication (Slack, Teams) for different event types.
+  </Accordion>
+  
+  <Accordion title="Lock Management">
+    Edit sections in small chunks and release locks promptly to avoid blocking teammates.
+  </Accordion>
+  
+  <Accordion title="Notebook Organization">
+    Use consistent naming for notes (e.g., "Web App - Authentication", "Network - DMZ") to help team members find information.
+  </Accordion>
+  
+  <Accordion title="Burp Suite Workflow">
+    Agree on when to submit findings from Burp (immediately vs. after validation) to maintain quality.
+  </Accordion>
+  
+  <Accordion title="Time Zone Awareness">
+    For distributed teams, include time zone context in notes and scheduling to avoid confusion.
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting
+
+### SSE Connection Issues
+
+If real-time updates aren't working:
+
+1. **Check browser console** for SSE connection errors
+2. **Verify proxy/firewall** settings allow long-lived HTTP connections
+3. **Review load balancer** configuration for sticky sessions
+4. **Monitor server logs** for EventStreamServlet errors
+
+### Lock Conflicts
+
+If sections remain locked:
+
+1. **Check lock timestamp** - may indicate abandoned session
+2. **Admin override** - manually release stuck locks
+3. **Session timeout** - locks auto-release on session expiration
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Peer Review" icon="users" href="/features/peer-review">
+    Collaborative quality assurance workflow
+  </Card>
+  <Card title="Burp Extension" icon="plug" href="https://github.com/factionsecurity/Faction-Burp">
+    Install the Burp Suite integration
+  </Card>
+  <Card title="API Reference" icon="code" href="/api/introduction">
+    Build custom integrations
+  </Card>
+  <Card title="Development" icon="hammer" href="/quickstart">
+    Extend collaboration features
+  </Card>
+</CardGroup>

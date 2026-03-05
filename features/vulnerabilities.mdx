@@ -1,0 +1,304 @@
+---
+title: 'Vulnerabilities'
+description: 'Track, score, and manage security vulnerabilities discovered during assessments'
+icon: 'bug'
+---
+
+## Overview
+
+Faction provides a comprehensive vulnerability tracking system that supports over 75 built-in vulnerability templates, custom vulnerability creation, multiple severity scoring systems, and full remediation workflow management.
+
+## Vulnerability Structure
+
+Each vulnerability is represented by the `Vulnerability` class (src/com/fuse/dao/Vulnerability.java) with the following key components:
+
+### Core Fields
+
+| Field | Description | Source |
+|-------|-------------|--------|
+| Name | Vulnerability title | Vulnerability.java:40 |
+| Description | Technical explanation of the issue | Vulnerability.java:41 |
+| Recommendation | Remediation guidance | Vulnerability.java:43 |
+| Details | Specific evidence and proof of concept | Vulnerability.java:45 |
+| Category | Classification (e.g., XSS, SQLi, AuthN) | Vulnerability.java:50 |
+| Tracking ID | Unique identifier (e.g., VID-5234) | Vulnerability.java:58 |
+
+<Info>
+Tracking IDs are automatically generated using the format `VID-{random}` (line 58) to uniquely identify findings across assessments.
+</Info>
+
+## Severity Scoring
+
+Faction supports multiple severity rating systems based on the assessment type:
+
+### Native Risk Ranking
+
+The default system uses three dimensions:
+
+<CardGroup cols={3}>
+  <Card title="Likelihood" icon="dice">
+    Probability the vulnerability will be exploited
+  </Card>
+  <Card title="Impact" icon="burst">
+    Potential damage if exploited
+  </Card>
+  <Card title="Overall" icon="chart-simple">
+    Combined risk score for prioritization
+  </Card>
+</CardGroup>
+
+```java
+// Risk dimensions stored as Long values (Vulnerability.java:51-53)
+private Long likelyhood;
+private Long impact;
+private Long overall;
+```
+
+Risk levels are configurable and typically map to:
+- Informational (1)
+- Low (2)
+- Medium (3)
+- High (4)
+- Critical (5)
+
+### CVSS Scoring
+
+When assessments use CVSS 3.1 or 4.0 scoring:
+
+```java
+// CVSS fields (Vulnerability.java:62-63)
+private String cvssScore;   // Numeric score (e.g., "7.5")
+private String cvssString;  // Vector string (e.g., "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H")
+```
+
+Faction automatically maps CVSS scores to severity levels:
+
+```java
+// Automatic severity mapping (Vulnerability.java:239-245)
+Float score = Float.parseFloat(cvssScore);
+if(score >= 9.0f) this.overall = 5l;      // Critical
+else if (score >= 7.0f) this.overall = 4l; // High
+else if (score >= 4.0f) this.overall = 3l; // Medium
+else if (score > 0.0f) this.overall = 2l;  // Low
+else this.overall = 1l;                     // Informational
+```
+
+<Warning>
+CVSS scores are stored as strings to preserve precision. The numeric value is parsed for severity categorization.
+</Warning>
+
+## Vulnerability Templates
+
+Faction includes 75+ pre-configured vulnerability templates via the `DefaultVulnerability` class (src/com/fuse/dao/DefaultVulnerability.java).
+
+### Template Features
+
+Default vulnerabilities include:
+
+- **Pre-written descriptions** explaining the security issue
+- **Recommended remediation** steps for developers
+- **Default severity ratings** for both Native and CVSS scoring
+- **Category classification** for organizational consistency
+- **Custom fields** for additional metadata
+
+```java
+// DefaultVulnerability.java template structure
+private String name;
+private String description;
+private String recommendation;
+private Category category;
+private int likelyhood;
+private int impact;
+private int overall;
+private String cvss31Score;
+private String cvss40Score;
+private String cvss31String;
+private String cvss40String;
+```
+
+### Template Management
+
+<Steps>
+  <Step title="Import Templates">
+    Navigate to Templates → Default Vulnerabilities and click "Update from Faction" to import the latest template library.
+  </Step>
+  <Step title="Customize Templates">
+    Edit default templates to match your organization's writing style and remediation guidance.
+  </Step>
+  <Step title="Create Custom Templates">
+    Add organization-specific vulnerability templates for common findings in your environment.
+  </Step>
+  <Step title="Activate/Deactivate">
+    Control which templates appear in assessor menus using the `active` field (DefaultVulnerability.java:46).
+  </Step>
+</Steps>
+
+## Creating Vulnerabilities
+
+Vulnerabilities can be added to assessments in multiple ways:
+
+### From Templates
+
+1. Select a default vulnerability template
+2. Populate with assessment-specific details
+3. Adjust severity based on context
+4. Link to the original template via `defaultVuln` field (Vulnerability.java:60)
+
+### Custom Vulnerabilities
+
+Create fully custom findings by:
+- Defining unique names and descriptions
+- Setting severity manually
+- Adding evidence in the Details field
+- Assigning appropriate categories
+
+### Burp Suite Integration
+
+Vulnerabilities can be automatically created from Burp Suite findings using the [Faction Burp Extension](https://github.com/factionsecurity/Faction-Burp).
+
+<Tip>
+The Burp extension streams findings in real-time during testing, reducing manual data entry and ensuring all discoveries are documented.
+</Tip>
+
+## Concurrent Editing Protection
+
+Like assessments, vulnerabilities include section-level locking:
+
+```java
+// Section locks prevent editing conflicts (Vulnerability.java:69-80)
+private Boolean desc_lock = false;
+private User desc_locked_by;
+private Date desc_lock_time;
+
+private Boolean rec_lock = false;
+private User rec_locked_by;
+private Date rec_lock_time;
+
+private Boolean detail_lock = false;
+private User detail_locked_by;
+private Date detail_lock_time;
+```
+
+This allows multiple assessors to work on different vulnerabilities simultaneously, or different sections of the same vulnerability.
+
+## Peer Review Notes
+
+Each vulnerability section supports peer review annotations:
+
+```java
+// Review notes stored separately (Vulnerability.java:42-46)
+private String desc_notes;   // Comments on description
+private String rec_notes;    // Comments on recommendation
+private String detail_notes; // Comments on technical details
+```
+
+These notes enable:
+- Reviewer feedback on specific sections
+- Track changes functionality
+- Quality improvement suggestions
+
+## Report Sections
+
+Vulnerabilities can be organized into report sections:
+
+```java
+// Section grouping (Vulnerability.java:346-354)
+private String section = "";
+
+public String getSection() {
+    return this.section == null || this.section == "" ? "Default" : this.section.replaceAll("_", " ");
+}
+```
+
+<Info>
+Sections allow grouping related vulnerabilities in reports (e.g., "Web Application", "Network Infrastructure", "Cloud Configuration").
+</Info>
+
+## Remediation Tracking
+
+Faction tracks vulnerability lifecycle through remediation:
+
+```java
+// Remediation tracking dates (Vulnerability.java:54-56)
+private Date closed;    // When vulnerability was closed
+private Date opened;    // When vulnerability was identified
+private Date created;   // When record was created
+private Date devClosed; // When developer marked as fixed
+```
+
+### Remediation Workflow
+
+<Steps>
+  <Step title="Opened">
+    Vulnerability discovered during assessment (opened date set)
+  </Step>
+  <Step title="Developer Closed">
+    Development team implements fix (devClosed date set)
+  </Step>
+  <Step title="Retest Scheduled">
+    Assessor validates the remediation in retest assessment
+  </Step>
+  <Step title="Closed">
+    Fix verified and vulnerability officially closed
+  </Step>
+</Steps>
+
+## Custom Fields
+
+Vulnerabilities support custom fields for additional metadata:
+
+```java
+@OneToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval=true)
+private List<CustomField> CustomFields;  // Vulnerability.java:65
+```
+
+Use cases:
+- Compliance mapping (CWE, OWASP Top 10, NIST controls)
+- Business impact categorization
+- Affected systems/components
+- Exploitability metrics
+
+## Sorting and Prioritization
+
+Vulnerabilities are automatically sorted by severity:
+
+```java
+// Automatic sorting in Assessment.getVulns() (Assessment.java:171-186)
+if(this.getType() != null && (this.getType().isCvss31() || this.getType().isCvss40())) {
+    Collections.sort(this.vulns, new Comparator<Vulnerability>() {
+        @Override
+        public int compare(Vulnerability v1, Vulnerability v2) {
+            String rawScore1 = v1.getCvssScore();
+            rawScore1 = rawScore1 == null || rawScore1.trim().equals("") ? "0.0" : rawScore1;
+            String rawScore2 = v2.getCvssScore();
+            rawScore2 = rawScore2 == null || rawScore2.trim().equals("") ? "0.0" : rawScore2;
+            Double score1 = Double.parseDouble(rawScore1);
+            Double score2 = Double.parseDouble(rawScore2);
+            return score2.compareTo(score1);  // Descending order
+        }
+    });
+} else {
+    Collections.sort(this.vulns, (Vulnerability v1, Vulnerability v2) -> v2.getOverall().compareTo(v1.getOverall()));
+}
+```
+
+<Note>
+CVSS-based assessments sort by numeric score, while native assessments sort by overall risk level. Both use descending order (highest severity first).
+</Note>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Reporting" icon="file-pdf" href="/features/reporting">
+    Include vulnerabilities in professional reports
+  </Card>
+  <Card title="Peer Review" icon="users" href="/features/peer-review">
+    Submit findings for quality review
+  </Card>
+  <Card title="Collaboration" icon="people-group" href="/features/collaboration">
+    Real-time vulnerability tracking with teams
+  </Card>
+  <Card title="API Reference" icon="code" href="/api/vulnerabilities">
+    Access vulnerability data programmatically
+  </Card>
+</CardGroup>

@@ -1,0 +1,210 @@
+---
+title: 'Creating Assessments'
+description: 'Step-by-step guide to create and configure security assessments in Faction'
+icon: 'file-plus'
+---
+
+## Overview
+
+Assessments are the core workflow objects in Faction. This guide walks you through creating a new assessment, configuring team members, setting dates and scope, and managing custom fields.
+
+## Creating a New Assessment
+
+<Steps>
+  <Step title="Navigate to Assessments">
+    From the main dashboard, navigate to the Assessments section and click **New Assessment** to begin.
+  </Step>
+
+  <Step title="Enter Basic Information">
+    Provide the following required details:
+    
+    - **Assessment Name**: Descriptive name for the engagement
+    - **Application ID (App ID)**: Unique identifier for the target application
+    - **Assessment Type**: Select from configured types (Web App, Mobile, API, etc.)
+    
+    The assessment type determines available templates, CVSS scoring methods (CVSS 3.1, CVSS 4.0, or custom risk levels), and report formats.
+  </Step>
+
+  <Step title="Set Assessment Dates">
+    Configure the timeline for your assessment:
+    
+    - **Start Date**: When the assessment begins
+    - **End Date**: Scheduled completion date
+    
+    These dates help track assessment progress and determine workflow status (Scheduled, In Progress, Past Due, or Completed).
+  </Step>
+
+  <Step title="Assign Team Members">
+    Faction uses role-based access control with multiple contact types:
+    
+    ### Assessors
+    Users who perform the security testing and document findings. Multiple assessors can be assigned to a single assessment for collaboration.
+    
+    <Note>
+      Assessors must have the **Assessor** permission enabled in their user profile.
+    </Note>
+    
+    ### Engagement Contact
+    The primary stakeholder or point of contact for the assessment. This user:
+    - Receives assessment notifications
+    - Can view assessment progress (if given appropriate permissions)
+    - Is included in report distribution
+    
+    ### Remediation Contact
+    User responsible for coordinating vulnerability fixes and retests. This contact:
+    - Manages the remediation queue
+    - Schedules verification testing
+    - Tracks vulnerability closure status
+  </Step>
+
+  <Step title="Configure Distribution Lists">
+    Enter email addresses (separated by semicolons) for stakeholders who should receive:
+    
+    - Assessment completion notifications
+    - Final report distribution
+    - Calendar invites for review meetings
+    
+    Example:
+    ```
+    security@company.com; dev-lead@company.com; manager@company.com
+    ```
+  </Step>
+
+  <Step title="Add Custom Fields (Optional)">
+    Custom fields allow you to capture assessment-specific metadata:
+    
+    - Business unit or department
+    - Compliance framework (PCI-DSS, SOC 2, HIPAA)
+    - External vendor information
+    - Budget or billing codes
+    - Custom report variables
+    
+    Custom fields can be:
+    - **Text fields**: Free-form input
+    - **Dropdowns**: Predefined options
+    - **Forms**: Structured data collection
+    - **Variables**: Values inserted into report templates
+    
+    <Tip>
+      Custom field values can be referenced in report templates using template variables, allowing dynamic content generation.
+    </Tip>
+  </Step>
+
+  <Step title="Select Campaign (Optional)">
+    Assign the assessment to a campaign for organizational grouping. Campaigns help:
+    
+    - Track related assessments (e.g., quarterly testing program)
+    - Generate aggregate metrics across multiple assessments
+    - Manage recurring testing initiatives
+  </Step>
+
+  <Step title="Add Access Notes">
+    Document credentials, VPN access, test accounts, or special instructions for assessors:
+    
+    - URLs and testing endpoints
+    - Authentication credentials
+    - Network access requirements
+    - Scope limitations or restrictions
+    - Special testing instructions
+  </Step>
+
+  <Step title="Save and Begin Testing">
+    Click **Create Assessment** to finalize. The assessment is now ready for:
+    
+    - Adding vulnerabilities
+    - Collaborative note-taking
+    - Real-time updates via the Burp Suite extension
+    - Team collaboration
+  </Step>
+</Steps>
+
+## Assessment Workflow States
+
+Once created, assessments progress through several workflow states:
+
+<AccordionGroup>
+  <Accordion title="Scheduled" icon="calendar">
+    Assessment is created but the start date hasn't arrived yet.
+  </Accordion>
+  
+  <Accordion title="In Progress" icon="spinner">
+    Current date is between start and end dates. Assessors can add vulnerabilities and collaborate.
+  </Accordion>
+  
+  <Accordion title="Past Due" icon="clock">
+    End date has passed but assessment isn't finalized. Indicates the engagement needs attention.
+  </Accordion>
+  
+  <Accordion title="In Peer Review" icon="users">
+    Assessment has been submitted for peer review. Changes are blocked until review completes.
+  </Accordion>
+  
+  <Accordion title="Completed" icon="check">
+    Assessment is finalized, report generated, and vulnerabilities opened in remediation tracking.
+  </Accordion>
+</AccordionGroup>
+
+## Updating Assessment Details
+
+You can modify assessment information at any time before finalization:
+
+1. Navigate to the assessment from the queue
+2. Update fields as needed (team members, dates, custom fields)
+3. Changes are saved automatically
+
+<Warning>
+  Assessments cannot be modified while in peer review or after finalization. Accept peer review edits before making additional changes.
+</Warning>
+
+## Scheduling Review Meetings
+
+Faction can generate calendar invites for stakeholder meetings:
+
+1. Open the assessment
+2. Click **Schedule Meeting**
+3. Choose calendar provider (Google Calendar, Outlook, Office 365)
+4. Calendar event includes:
+   - Assessment name and App ID
+   - All distribution list recipients
+   - Assessor team members
+   - Link to final report
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Use Descriptive Names" icon="tag">
+    Include app name and assessment type in the name for easy identification in queues and reports.
+  </Card>
+  
+  <Card title="Assign All Contacts" icon="users">
+    Always designate engagement and remediation contacts to ensure proper notification flow.
+  </Card>
+  
+  <Card title="Set Realistic Dates" icon="calendar-days">
+    Account for scope, complexity, and assessor availability when scheduling.
+  </Card>
+  
+  <Card title="Document Access Early" icon="key">
+    Add access notes during creation to avoid delays when testing begins.
+  </Card>
+</CardGroup>
+
+## Related Resources
+
+<CardGroup cols={2}>
+  <Card title="Vulnerability Tracking" icon="bug" href="/guides/vulnerability-tracking">
+    Learn how to add and manage findings
+  </Card>
+  
+  <Card title="Team Management" icon="users" href="/guides/team-management">
+    Configure user roles and permissions
+  </Card>
+  
+  <Card title="Custom Templates" icon="file-code" href="/guides/custom-templates">
+    Create branded report templates
+  </Card>
+  
+  <Card title="Remediation Workflow" icon="rotate" href="/guides/remediation-workflow">
+    Track fixes and schedule retests
+  </Card>
+</CardGroup>

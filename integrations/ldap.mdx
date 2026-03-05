@@ -1,0 +1,233 @@
+---
+title: 'LDAP Authentication'
+description: 'Configure LDAP authentication for centralized user management'
+---
+
+## Overview
+
+Faction supports LDAP (Lightweight Directory Access Protocol) authentication, allowing you to integrate with Active Directory, OpenLDAP, or other LDAP-compliant directory services. This enables centralized user management and single sign-on capabilities.
+
+## Configuration
+
+### Basic LDAP Settings
+
+Configure LDAP authentication in Faction's system settings:
+
+<CodeGroup>
+```yaml Configuration Parameters
+ldapURL: ldap://your-ldap-server:389
+ldapBaseDN: dc=example,dc=com
+ldapBindDN: cn=admin,dc=example,dc=com
+ldapBindPassword: your-bind-password
+ldapSecurity: ssl  # or 'tls' or 'none'
+ldapObjectClass: user  # or leave empty for auto-detection
+ldapInsecureSSL: false  # only set to true for testing
+```
+</CodeGroup>
+
+### Parameter Descriptions
+
+| Parameter | Description | Example |
+|-----------|-------------|----------|
+| `ldapURL` | LDAP server URL and port | `ldap://ldap.example.com:389` or `ldaps://ldap.example.com:636` |
+| `ldapBaseDN` | Base Distinguished Name for searches | `dc=company,dc=com` |
+| `ldapBindDN` | DN for binding to LDAP | `cn=faction,ou=services,dc=company,dc=com` |
+| `ldapBindPassword` | Password for bind DN | |
+| `ldapSecurity` | Security protocol | `ssl`, `tls`, or `none` |
+| `ldapObjectClass` | LDAP object class filter | `user`, `inetOrgPerson`, or empty |
+| `ldapInsecureSSL` | Skip SSL certificate validation | `true` or `false` (default) |
+
+### Active Directory Configuration
+
+For Microsoft Active Directory:
+
+<CodeGroup>
+```yaml Active Directory
+ldapURL: ldap://ad.company.com:389
+ldapBaseDN: dc=company,dc=com
+ldapBindDN: cn=faction-service,ou=Service Accounts,dc=company,dc=com
+ldapSecurity: tls
+ldapObjectClass: user
+```
+</CodeGroup>
+
+### OpenLDAP Configuration
+
+For OpenLDAP servers:
+
+<CodeGroup>
+```yaml OpenLDAP
+ldapURL: ldap://openldap.company.com:389
+ldapBaseDN: dc=company,dc=com
+ldapBindDN: cn=admin,dc=company,dc=com
+ldapSecurity: ssl
+ldapObjectClass: inetOrgPerson
+```
+</CodeGroup>
+
+## User Provisioning
+
+### Automatic User Creation
+
+When a user successfully authenticates via LDAP, Faction automatically provisions their account using the following attributes:
+
+| LDAP Attribute | Faction Field | Fallback |
+|----------------|---------------|----------|
+| `mail` | Email | Required |
+| `givenName` | First Name | |
+| `sn` | Last Name | |
+| `sAMAccountName` | Username | `uid` |
+| `uid` | Username | `sAMAccountName` |
+
+### Search Filters
+
+Faction uses the following search filters to locate users:
+
+**With ObjectClass specified:**
+```ldap
+(&(ObjectClass=user)(uid=username))
+```
+
+**Without ObjectClass (auto-detection):**
+```ldap
+(|(uid=username)(sAMAccountName=username))
+```
+
+### User Search
+
+For user search functionality, Faction queries multiple attributes:
+
+```ldap
+(|(uid=search*)(sAMAccountName=search*)(mail=search*)(givenName=search*)(sn=search*))
+```
+
+## Testing LDAP Connection
+
+### Connection Validation
+
+1. Navigate to **Settings** > **Authentication** > **LDAP**
+
+2. Enter your LDAP configuration parameters
+
+3. Click **Test Connection** to validate:
+   - Server connectivity
+   - Bind credentials
+   - Base DN accessibility
+
+4. If successful, you'll see a confirmation message
+
+### Test User Authentication
+
+To verify user authentication:
+
+1. In LDAP settings, use the **Test User** section
+
+2. Enter a username from your directory
+
+3. Click **Search User** to verify Faction can locate and retrieve user attributes
+
+4. Review the retrieved attributes (email, first name, last name)
+
+## Security Configuration
+
+### SSL/TLS Options
+
+<AccordionGroup>
+  <Accordion title="SSL (Secure LDAP)">
+    Use LDAPS on port 636 for encrypted connections:
+    ```yaml
+    ldapURL: ldaps://ldap.example.com:636
+    ldapSecurity: ssl
+    ```
+  </Accordion>
+
+  <Accordion title="StartTLS">
+    Use TLS upgrade on standard LDAP port 389:
+    ```yaml
+    ldapURL: ldap://ldap.example.com:389
+    ldapSecurity: tls
+    ```
+  </Accordion>
+
+  <Accordion title="Insecure SSL (Development Only)">
+    For testing with self-signed certificates:
+    ```yaml
+    ldapSecurity: ssl
+    ldapInsecureSSL: true
+    ```
+    <Warning>Never use `ldapInsecureSSL: true` in production environments.</Warning>
+  </Accordion>
+</AccordionGroup>
+
+## Implementation Details
+
+Faction's LDAP implementation uses the following Java JNDI context properties:
+
+```java
+Context.INITIAL_CONTEXT_FACTORY: com.sun.jndi.ldap.LdapCtxFactory
+Context.PROVIDER_URL: <ldapURL>
+Context.SECURITY_AUTHENTICATION: simple
+Context.SECURITY_PRINCIPAL: <ldapBindDN>
+Context.SECURITY_CREDENTIALS: <ldapBindPassword>
+Context.SECURITY_PROTOCOL: <ldapSecurity>
+```
+
+Relevant source code: `src/com/fuse/authentication/LDAPValidator.java`
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Connection Timeout">
+    - Verify the LDAP server URL and port are correct
+    - Ensure firewall rules allow outbound LDAP/LDAPS traffic
+    - Check if the LDAP server is running and accessible
+    - Test connectivity using `telnet ldap.example.com 389`
+  </Accordion>
+
+  <Accordion title="Authentication Failed">
+    - Verify bind DN and password are correct
+    - Ensure the bind DN has search permissions on the base DN
+    - Check LDAP server logs for authentication errors
+    - Verify the user exists in the directory with correct attributes
+  </Accordion>
+
+  <Accordion title="SSL Certificate Errors">
+    - Import the LDAP server's SSL certificate into Faction's trust store
+    - Verify the certificate is valid and not expired
+    - Check that the certificate CN matches the LDAP server hostname
+    - For testing only, enable `ldapInsecureSSL`
+  </Accordion>
+
+  <Accordion title="User Not Found">
+    - Verify the base DN is correct
+    - Check that the user exists under the base DN
+    - Ensure the objectClass filter matches your directory schema
+    - Test with an empty objectClass to use auto-detection
+  </Accordion>
+
+  <Accordion title="Missing User Attributes">
+    - Verify your LDAP schema includes the required attributes
+    - Check LDAP attribute mappings (mail, givenName, sn, uid/sAMAccountName)
+    - Ensure the bind account has read permissions for user attributes
+  </Accordion>
+</AccordionGroup>
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Use Service Accounts" icon="user-shield">
+    Create a dedicated service account for Faction's LDAP binding with minimal required permissions.
+  </Card>
+
+  <Card title="Enable SSL/TLS" icon="lock">
+    Always use encrypted LDAP connections (LDAPS or StartTLS) in production environments.
+  </Card>
+
+  <Card title="Restrict Base DN" icon="filter">
+    Use the most specific base DN possible to limit search scope and improve performance.
+  </Card>
+
+  <Card title="Monitor Authentication" icon="chart-line">
+    Review LDAP authentication logs regularly to detect suspicious activity.
+  </Card>
+</CardGroup>

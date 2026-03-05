@@ -1,0 +1,440 @@
+---
+title: "Audit Log API"
+description: "Retrieve audit logs for compliance and activity tracking"
+---
+
+## Overview
+
+The Audit Log API provides endpoints for retrieving audit logs to track user activities, system changes, and assessment modifications. This is essential for compliance, security auditing, and understanding historical changes within the Faction platform.
+
+All endpoints require Admin role permissions and authentication via the `FACTION-API-KEY` header.
+
+---
+
+## Get Audit Log by Date Range
+
+<RequestExample>
+```bash POST /api/auditlog/log
+curl -X POST "https://your-faction-instance.com/api/auditlog/log" \
+  -H "FACTION-API-KEY: your-api-key" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "start=2024-01-01" \
+  -d "end=2024-03-31"
+```
+</RequestExample>
+
+Retrieves all audit log entries for a specified time frame.
+
+### Authentication
+
+<ParamField header="FACTION-API-KEY" type="string" required>
+  API authentication key (requires Admin role)
+</ParamField>
+
+### Form Parameters
+
+<ParamField body="start" type="date" required>
+  Start date for audit log retrieval (YYYY-MM-DD format)
+</ParamField>
+
+<ParamField body="end" type="date" required>
+  End date for audit log retrieval (YYYY-MM-DD format)
+</ParamField>
+
+### Response
+
+Returns an array of `AuditLog` objects ordered by timestamp.
+
+<ResponseField name="id" type="long">
+  Audit log entry ID
+</ResponseField>
+
+<ResponseField name="timestamp" type="date">
+  When the action occurred
+</ResponseField>
+
+<ResponseField name="username" type="string">
+  Username who performed the action
+</ResponseField>
+
+<ResponseField name="compname" type="string">
+  Component name (e.g., "Assessment", "Vulnerability", "User")
+</ResponseField>
+
+<ResponseField name="compid" type="long">
+  Component ID (e.g., assessment ID, vulnerability ID)
+</ResponseField>
+
+<ResponseField name="action" type="string">
+  Action performed (e.g., "CREATE", "UPDATE", "DELETE")
+</ResponseField>
+
+<ResponseField name="details" type="string">
+  Additional details about the action
+</ResponseField>
+
+### Status Codes
+
+- `200` - Success: Audit log returned
+- `401` - Not authorized (requires Admin role)
+
+---
+
+## Get Assessment Audit Logs
+
+<RequestExample>
+```bash POST /api/auditlog/assessmentlog
+curl -X POST "https://your-faction-instance.com/api/auditlog/assessmentlog" \
+  -H "FACTION-API-KEY: your-api-key" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "start=2024-01-01" \
+  -d "end=2024-03-31"
+```
+</RequestExample>
+
+Retrieves audit log entries specifically for assessment-related activities within a time frame.
+
+### Authentication
+
+<ParamField header="FACTION-API-KEY" type="string" required>
+  API authentication key (requires Admin role)
+</ParamField>
+
+### Form Parameters
+
+<ParamField body="start" type="date" required>
+  Start date for audit log retrieval (YYYY-MM-DD format)
+</ParamField>
+
+<ParamField body="end" type="date" required>
+  End date for audit log retrieval (YYYY-MM-DD format)
+</ParamField>
+
+### Response
+
+Returns an array of `AuditLog` objects filtered to assessment-related events, ordered by timestamp.
+
+### Included Activities
+
+- Assessment creation
+- Assessment updates (notes, summary, status changes)
+- Assessment assignments
+- Assessment completions
+- Assessment deletions
+
+### Status Codes
+
+- `200` - Success: Audit log returned
+- `401` - Not authorized (requires Admin role)
+
+---
+
+## Get Audit Log for Specific Assessment
+
+<RequestExample>
+```bash POST /api/auditlog/assessmentlog/{aid}
+curl -X POST "https://your-faction-instance.com/api/auditlog/assessmentlog/123" \
+  -H "FACTION-API-KEY: your-api-key" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "start=2024-01-01" \
+  -d "end=2024-03-31"
+```
+</RequestExample>
+
+Retrieves audit log entries for a specific assessment by ID within a time frame.
+
+### Path Parameters
+
+<ParamField path="aid" type="long" required>
+  Assessment ID
+</ParamField>
+
+### Authentication
+
+<ParamField header="FACTION-API-KEY" type="string" required>
+  API authentication key (requires Admin role)
+</ParamField>
+
+### Form Parameters
+
+<ParamField body="start" type="date" required>
+  Start date for audit log retrieval (YYYY-MM-DD format)
+</ParamField>
+
+<ParamField body="end" type="date" required>
+  End date for audit log retrieval (YYYY-MM-DD format)
+</ParamField>
+
+### Response
+
+Returns an array of `AuditLog` objects for the specified assessment, ordered by timestamp.
+
+### Use Cases
+
+- **Compliance**: Track all changes to a specific assessment
+- **Troubleshooting**: Investigate issues with a particular assessment
+- **Audit Trail**: Provide evidence of assessment lifecycle for reports
+- **Change History**: Review who made what changes and when
+
+### Status Codes
+
+- `200` - Success: Audit log returned
+- `401` - Not authorized (requires Admin role)
+
+---
+
+## Get User Activity Log
+
+<RequestExample>
+```bash POST /api/auditlog/userlog
+curl -X POST "https://your-faction-instance.com/api/auditlog/userlog" \
+  -H "FACTION-API-KEY: your-api-key" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "username=jdoe" \
+  -d "start=2024-01-01" \
+  -d "end=2024-03-31"
+```
+</RequestExample>
+
+Retrieves all audit log entries for a specific user within a time frame.
+
+### Authentication
+
+<ParamField header="FACTION-API-KEY" type="string" required>
+  API authentication key (requires Admin role)
+</ParamField>
+
+### Form Parameters
+
+<ParamField body="username" type="string" required>
+  Username to retrieve activity for
+</ParamField>
+
+<ParamField body="start" type="date" required>
+  Start date for audit log retrieval (YYYY-MM-DD format)
+</ParamField>
+
+<ParamField body="end" type="date" required>
+  End date for audit log retrieval (YYYY-MM-DD format)
+</ParamField>
+
+### Response
+
+Returns an array of `AuditLog` objects for the specified user, ordered by timestamp.
+
+### Tracked Activities
+
+- Login/logout events
+- Assessment access and modifications
+- Vulnerability creation and updates
+- Report generation
+- Configuration changes
+- User management actions
+
+### Use Cases
+
+- **User Productivity**: Track assessor activity and output
+- **Security Investigation**: Investigate suspicious user behavior
+- **Performance Review**: Review user contributions and activity
+- **Compliance**: Demonstrate user actions for audit purposes
+
+### Status Codes
+
+- `200` - Success: User activity log returned
+- `401` - Not authorized (requires Admin role)
+
+---
+
+## Audit Log Entry Structure
+
+### Component Names
+
+Common values for the `compname` field:
+
+- `Assessment` - Assessment-related activities
+- `Vulnerability` - Vulnerability changes
+- `User` - User account modifications
+- `Team` - Team management
+- `Campaign` - Campaign changes
+- `Settings` - System configuration
+- `Report` - Report generation
+
+### Action Types
+
+Common values for the `action` field:
+
+- `CREATE` - New entity created
+- `UPDATE` - Entity modified
+- `DELETE` - Entity removed
+- `LOGIN` - User login
+- `LOGOUT` - User logout
+- `ACCESS` - Entity accessed/viewed
+- `EXPORT` - Data exported
+- `IMPORT` - Data imported
+
+### Example Entry
+
+```json
+{
+  "id": 12345,
+  "timestamp": "2024-03-15T14:23:45.000Z",
+  "username": "jdoe",
+  "compname": "Assessment",
+  "compid": 123,
+  "action": "UPDATE",
+  "details": "Updated assessment notes and summary"
+}
+```
+
+---
+
+## Filtering and Analysis
+
+### Date Range Queries
+
+All endpoints support date range filtering to limit results:
+
+```bash
+# Last 30 days
+start=2024-02-15
+end=2024-03-15
+
+# Specific month
+start=2024-03-01
+end=2024-03-31
+
+# Year to date
+start=2024-01-01
+end=2024-12-31
+```
+
+### Analyzing Results
+
+Common analysis patterns:
+
+**Activity by User**
+```javascript
+const logsByUser = logs.reduce((acc, log) => {
+  acc[log.username] = (acc[log.username] || 0) + 1;
+  return acc;
+}, {});
+```
+
+**Activity by Component**
+```javascript
+const logsByComponent = logs.reduce((acc, log) => {
+  acc[log.compname] = (acc[log.compname] || 0) + 1;
+  return acc;
+}, {});
+```
+
+**Timeline Analysis**
+```javascript
+const logsByDay = logs.reduce((acc, log) => {
+  const day = log.timestamp.split('T')[0];
+  acc[day] = (acc[day] || 0) + 1;
+  return acc;
+}, {});
+```
+
+---
+
+## Compliance and Reporting
+
+### Compliance Requirements
+
+The Audit Log API helps meet compliance requirements for:
+
+- **SOC 2**: Demonstrating access controls and change tracking
+- **ISO 27001**: Evidence of security monitoring and logging
+- **PCI DSS**: Tracking access to sensitive data
+- **HIPAA**: Healthcare data access auditing
+- **GDPR**: Data processing activity records
+
+### Generating Compliance Reports
+
+```bash
+# Full quarterly audit report
+curl -X POST "https://your-faction-instance.com/api/auditlog/log" \
+  -H "FACTION-API-KEY: your-api-key" \
+  -d "start=2024-01-01" \
+  -d "end=2024-03-31" \
+  > quarterly-audit-q1-2024.json
+
+# Assessment-specific audit trail
+curl -X POST "https://your-faction-instance.com/api/auditlog/assessmentlog/123" \
+  -H "FACTION-API-KEY: your-api-key" \
+  -d "start=2024-01-01" \
+  -d "end=2024-12-31" \
+  > assessment-123-audit-trail.json
+```
+
+---
+
+## Best Practices
+
+### Regular Exports
+
+- Export audit logs regularly for long-term retention
+- Store exported logs in immutable storage
+- Maintain logs according to compliance requirements (typically 7 years)
+
+### Monitoring
+
+- Set up alerts for suspicious activities
+- Monitor failed access attempts
+- Track unusual patterns in user behavior
+
+### Integration
+
+```javascript
+// Example: Daily audit log backup
+const exportDailyLogs = async () => {
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const start = yesterday.toISOString().split('T')[0];
+  const end = start;
+
+  const response = await fetch('/api/auditlog/log', {
+    method: 'POST',
+    headers: {
+      'FACTION-API-KEY': process.env.FACTION_API_KEY,
+      'Content-Type': 'application/x-www-form-urlencoded'
+    },
+    body: `start=${start}&end=${end}`
+  });
+
+  const logs = await response.json();
+  await saveToPermanentStorage(logs, start);
+};
+```
+
+### Access Control
+
+- Limit audit log access to administrators only
+- Use separate API keys for audit log access
+- Monitor who accesses the audit logs themselves
+
+---
+
+## Authorization Requirements
+
+All Audit Log API endpoints require:
+- Valid `FACTION-API-KEY` header
+- Admin role permissions
+- Date range parameters
+
+## Limitations
+
+- Results are ordered by timestamp (ascending)
+- Date range is required for all queries
+- Large date ranges may return substantial data
+- Consider pagination for very large result sets
+
+## Security Considerations
+
+- Audit logs contain sensitive information about system usage
+- Ensure audit log API keys are stored securely
+- Never expose audit logs to non-administrative users
+- Audit logs themselves should be monitored for unauthorized access
+- Export logs regularly to prevent data loss

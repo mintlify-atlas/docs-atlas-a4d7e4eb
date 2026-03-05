@@ -1,0 +1,196 @@
+---
+title: 'API Introduction'
+description: 'Overview of the Faction REST API for penetration testing automation'
+icon: 'code'
+---
+
+## Overview
+
+The Faction REST API provides programmatic access to all core functionality of the Faction penetration testing platform. Use the API to automate assessment workflows, manage vulnerabilities, integrate with CI/CD pipelines, and build custom integrations.
+
+## Base URL
+
+The API is accessible at:
+
+```
+{contextPath}/api
+```
+
+Where `{contextPath}` is your Faction server's context path. For example:
+- `https://faction.example.com/api`
+- `https://your-server.com/faction/api`
+
+## API Version
+
+Current API version: **1.1.0**
+
+## Interactive Documentation
+
+Faction provides interactive API documentation using Swagger/OpenAPI at:
+
+```
+{contextPath}/swagger
+```
+
+The Swagger UI allows you to:
+- Explore all available endpoints
+- View request/response schemas
+- Test API calls directly from your browser
+- Download the OpenAPI specification
+
+## Response Format
+
+All API responses use **JSON** format with UTF-8 encoding.
+
+### Success Response
+
+Successful operations return a 200 status code with a result object:
+
+```json
+[{ "result": "SUCCESS" }]
+```
+
+For operations that return data, the response includes the requested resource:
+
+```json
+[{ "result": "SUCCESS", "vid": 12345 }]
+```
+
+### Error Response
+
+Errors return appropriate HTTP status codes with an error message:
+
+```json
+[{ "result": "ERROR", "message": "Detailed error description" }]
+```
+
+## HTTP Status Codes
+
+The API uses standard HTTP status codes:
+
+| Status Code | Description |
+|------------|-------------|
+| `200` | Success - Request completed successfully |
+| `400` | Bad Request - Invalid parameters or malformed request |
+| `401` | Unauthorized - Authentication failed or missing API key |
+| `404` | Not Found - Resource does not exist |
+| `500` | Internal Server Error - Server-side error |
+
+## Error Handling
+
+When an error occurs, the API returns:
+1. An appropriate HTTP status code
+2. A JSON response with `result: "ERROR"`
+3. A descriptive `message` field explaining the error
+
+**Example error response:**
+
+```json
+[{
+  "result": "ERROR",
+  "message": "Assessment Does Not Exist."
+}]
+```
+
+### Common Errors
+
+<AccordionGroup>
+  <Accordion title="401 Not Authorized">
+    - Missing `FACTION-API-KEY` header
+    - Invalid or expired API key
+    - Insufficient permissions for the requested operation
+    
+    **Solution:** Verify your API key and ensure it has the required permissions.
+  </Accordion>
+
+  <Accordion title="400 Bad Request">
+    - Missing required parameters
+    - Invalid parameter format
+    - Resource locked (e.g., assessment in peer review)
+    
+    **Solution:** Check the error message for specific validation failures.
+  </Accordion>
+
+  <Accordion title="404 Not Found">
+    - Requested resource ID does not exist
+    - Invalid endpoint path
+    
+    **Solution:** Verify the resource ID and endpoint URL.
+  </Accordion>
+</AccordionGroup>
+
+## Rate Limiting
+
+<Note>
+Faction does not currently implement API rate limiting. However, we recommend implementing client-side throttling for bulk operations to avoid overwhelming the server.
+</Note>
+
+## Content Types
+
+The API supports multiple content types depending on the endpoint:
+
+- **JSON** - `application/json` (primary format)
+- **Form Data** - `application/x-www-form-urlencoded` (for certain POST/PUT operations)
+- **CSV** - `text/csv` (for bulk import/export operations)
+
+Always check the specific endpoint documentation for supported content types.
+
+## Data Encoding
+
+For certain fields that support rich text (descriptions, recommendations, exploit details):
+
+- **Base64 encoding** is used for HTML and Markdown content
+- The API automatically converts Markdown to HTML
+- Content is sanitized to prevent XSS attacks
+
+**Example:**
+
+```bash
+echo "# Vulnerability Details\n\nThis is a *critical* finding." | base64
+```
+
+## Pagination
+
+<Note>
+Most list endpoints currently return all matching results without pagination. For large datasets, consider using date ranges or filters to limit result sets.
+</Note>
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Use HTTPS" icon="lock">
+    Always use HTTPS to protect API keys and sensitive data in transit.
+  </Card>
+
+  <Card title="Handle Errors" icon="triangle-exclamation">
+    Implement proper error handling for all API calls. Don't assume success.
+  </Card>
+
+  <Card title="Validate Input" icon="check">
+    Validate all input data before sending to the API to avoid 400 errors.
+  </Card>
+
+  <Card title="Store Keys Securely" icon="key">
+    Never commit API keys to version control. Use environment variables or secrets management.
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Authentication" icon="shield-halved" href="/api/authentication">
+    Learn how to authenticate API requests with API keys
+  </Card>
+
+  <Card title="Assessments" icon="clipboard-check" href="/api/assessments">
+    Manage penetration testing assessments
+  </Card>
+
+  <Card title="Vulnerabilities" icon="bug" href="/api/vulnerabilities">
+    Create and track security vulnerabilities
+  </Card>
+
+  <Card title="Users" icon="users" href="/api/users">
+    Manage user accounts and permissions
+  </Card>
+</CardGroup>

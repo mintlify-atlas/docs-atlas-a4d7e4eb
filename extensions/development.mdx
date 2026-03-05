@@ -1,0 +1,582 @@
+---
+title: Extension Development
+description: Build custom Faction extensions with the FactionExtender library
+---
+
+# Extension Development
+
+This guide walks you through creating a custom Faction extension, from setting up your development environment to testing and deploying your extension.
+
+## Prerequisites
+
+Before you begin, ensure you have:
+
+- **Java JDK 8 or higher** - Faction extensions use Java 8 compatibility
+- **Maven 3.x** - For dependency management and building
+- **Faction instance** - A running Faction server for testing (development or production)
+- **IDE** - IntelliJ IDEA, Eclipse, or your preferred Java IDE
+
+## Project Setup
+
+### 1. Create a Maven Project
+
+Create a new Maven project for your extension:
+
+```bash
+mvn archetype:generate \
+  -DgroupId=com.yourcompany.faction \
+  -DartifactId=faction-custom-extension \
+  -DarchetypeArtifactId=maven-archetype-quickstart \
+  -DinteractiveMode=false
+
+cd faction-custom-extension
+```
+
+### 2. Configure pom.xml
+
+Add the FactionExtender library dependency to your `pom.xml`:
+
+```xml
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.yourcompany.faction</groupId>
+    <artifactId>faction-custom-extension</artifactId>
+    <version>1.0.0</version>
+    <packaging>jar</packaging>
+
+    <properties>
+        <maven.compiler.source>8</maven.compiler.source>
+        <maven.compiler.target>8</maven.compiler.target>
+    </properties>
+
+    <dependencies>
+        <!-- FactionExtender API -->
+        <dependency>
+            <groupId>com.factionsecurity</groupId>
+            <artifactId>faction-extender</artifactId>
+            <version>2.7</version>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.10.1</version>
+                <configuration>
+                    <source>8</source>
+                    <target>8</target>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>
+```
+
+<Note>
+The FactionExtender dependency uses `<scope>provided</scope>` because Faction's runtime already includes this library.
+</Note>
+
+## FactionExtender Library
+
+The FactionExtender library provides interfaces for hooking into Faction events. Your extension implements one or more of these interfaces:
+
+### Available Interfaces
+
+| Interface | Event Type | Purpose |
+|-----------|------------|----------|
+| `AssessmentManager` | `ASMT_MANAGER` | React to assessment lifecycle events |
+| `VulnerabilityManager` | `VULN_MANAGER` | Process vulnerability changes |
+| `VerificationManager` | `VER_MANAGER` | Handle retest and verification events |
+| `ApplicationInventory` | `INVENTORY` | Integrate with asset/inventory systems |
+| `ReportManager` | `REPORT_MANAGER` | Customize report generation |
+
+Each interface defines methods that Faction calls when specific events occur.
+
+## Extension Events and Listeners
+
+Extensions receive events through well-defined interfaces. Let's explore each type:
+
+### AssessmentManager Interface
+
+Triggered when assessments are created, updated, or completed.
+
+**Key Method**:
+```java
+AssessmentManagerResult assessmentChange(
+    com.faction.elements.Assessment assessment,
+    List<com.faction.elements.Vulnerability> vulnerabilities,
+    Operation operation
+)
+```
+
+**Operation Types**:
+- `CREATE` - New assessment created
+- `UPDATE` - Assessment details modified
+- `COMPLETE` - Assessment marked as complete
+- `DELETE` - Assessment deleted
+
+**Example Implementation**:
+```java
+package com.yourcompany.faction.extension;
+
+import com.faction.extender.AssessmentManager;
+import com.faction.elements.Assessment;
+import com.faction.elements.Vulnerability;
+import com.faction.elements.results.AssessmentManagerResult;
+import com.faction.elements.utils.Log;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+public class JiraIntegrationExtension implements AssessmentManager {
+    
+    private Map<String, String> config;
+    private List<Log> logs = new ArrayList<>();
+    
+    @Override
+    public void setConfigs(Map<String, String> configs) {
+        this.config = configs;
+    }
+    
+    @Override
+    public AssessmentManagerResult assessmentChange(
+            Assessment assessment,
+            List<Vulnerability> vulnerabilities,
+            Operation operation) {
+        
+        logs.add(new Log("Processing assessment: " + assessment.getName()));
+        
+        // Only create Jira tickets when assessment is complete
+        if (operation == Operation.COMPLETE) {
+            for (Vulnerability vuln : vulnerabilities) {
+                createJiraTicket(assessment, vuln);
+            }
+        }
+        
+        // Return null if you don't need to modify data
+        return null;
+    }
+    
+    private void createJiraTicket(Assessment assessment, Vulnerability vuln) {
+        String jiraUrl = config.get("jiraUrl");
+        String apiToken = config.get("apiToken");
+        String projectKey = config.get("projectKey");
+        
+        // Your Jira API integration code here
+        logs.add(new Log("Created Jira ticket for: " + vuln.getTitle()));
+    }
+    
+    @Override
+    public List<Log> getLogs() {
+        return logs;
+    }
+}
+```
+
+### VulnerabilityManager Interface
+
+Triggered when individual vulnerabilities are created, updated, or deleted.
+
+**Key Method**:
+```java
+com.faction.elements.Vulnerability vulnChange(
+    com.faction.elements.Assessment assessment,
+    com.faction.elements.Vulnerability vulnerability,
+    Operation operation
+)
+```
+
+**Example Implementation**:
+```java
+public class VulnerabilityEnrichmentExtension implements VulnerabilityManager {
+    
+    private Map<String, String> config;
+    private List<Log> logs = new ArrayList<>();
+    
+    @Override
+    public void setConfigs(Map<String, String> configs) {
+        this.config = configs;
+    }
+    
+    @Override
+    public Vulnerability vulnChange(
+            Assessment assessment,
+            Vulnerability vulnerability,
+            Operation operation) {
+        
+        if (operation == Operation.CREATE || operation == Operation.UPDATE) {
+            // Enrich vulnerability with external data
+            enrichWithThreatIntel(vulnerability);
+            
+            // Return modified vulnerability
+            return vulnerability;
+        }
+        
+        return null;
+    }
+    
+    private void enrichWithThreatIntel(Vulnerability vuln) {
+        // Add CVSS scores, CVE references, etc.
+        logs.add(new Log("Enriched vulnerability: " + vuln.getTitle()));
+    }
+    
+    @Override
+    public List<Log> getLogs() {
+        return logs;
+    }
+}
+```
+
+### VerificationManager Interface
+
+Triggered during retest and verification workflows.
+
+**Key Method**:
+```java
+com.faction.elements.Vulnerability verificationChange(
+    com.faction.elements.User assessor,
+    com.faction.elements.Vulnerability vulnerability,
+    com.faction.elements.Verification verification,
+    Operation operation
+)
+```
+
+**Example Implementation**:
+```java
+public class RetestNotificationExtension implements VerificationManager {
+    
+    private Map<String, String> config;
+    private List<Log> logs = new ArrayList<>();
+    
+    @Override
+    public void setConfigs(Map<String, String> configs) {
+        this.config = configs;
+    }
+    
+    @Override
+    public Vulnerability verificationChange(
+            User assessor,
+            Vulnerability vulnerability,
+            Verification verification,
+            Operation operation) {
+        
+        if (operation == Operation.COMPLETE) {
+            sendSlackNotification(
+                assessor,
+                vulnerability,
+                verification.getStatus()
+            );
+        }
+        
+        return null;
+    }
+    
+    private void sendSlackNotification(
+            User assessor,
+            Vulnerability vuln,
+            String status) {
+        // Send Slack webhook notification
+        logs.add(new Log("Sent Slack notification for retest: " + status));
+    }
+    
+    @Override
+    public List<Log> getLogs() {
+        return logs;
+    }
+}
+```
+
+### ReportManager Interface
+
+Triggered during report generation, allowing you to modify report content.
+
+**Key Method**:
+```java
+String reportCreate(
+    com.faction.elements.Assessment assessment,
+    List<com.faction.elements.Vulnerability> vulnerabilities,
+    String reportText
+)
+```
+
+**Example Implementation**:
+```java
+public class ChartGeneratorExtension implements ReportManager {
+    
+    private Map<String, String> config;
+    private List<Log> logs = new ArrayList<>();
+    
+    @Override
+    public void setConfigs(Map<String, String> configs) {
+        this.config = configs;
+    }
+    
+    @Override
+    public String reportCreate(
+            Assessment assessment,
+            List<Vulnerability> vulnerabilities,
+            String reportText) {
+        
+        // Generate severity distribution chart
+        String chartHtml = generateSeverityChart(vulnerabilities);
+        
+        // Insert chart into report
+        String updatedReport = reportText.replace(
+            "{{SEVERITY_CHART}}",
+            chartHtml
+        );
+        
+        logs.add(new Log("Generated severity chart"));
+        
+        return updatedReport;
+    }
+    
+    private String generateSeverityChart(List<Vulnerability> vulns) {
+        // Generate HTML/base64 chart image
+        return "<img src='data:image/png;base64,...' />";
+    }
+    
+    @Override
+    public List<Log> getLogs() {
+        return logs;
+    }
+}
+```
+
+### ApplicationInventory Interface
+
+Triggered when searching for applications in the inventory.
+
+**Key Method**:
+```java
+com.faction.elements.results.InventoryResult[] search(
+    String applicationId,
+    String applicationName
+)
+```
+
+**Example Implementation**:
+```java
+public class CmdbIntegrationExtension implements ApplicationInventory {
+    
+    private Map<String, String> config;
+    private List<Log> logs = new ArrayList<>();
+    
+    @Override
+    public void setConfigs(Map<String, String> configs) {
+        this.config = configs;
+    }
+    
+    @Override
+    public InventoryResult[] search(String appId, String appName) {
+        List<InventoryResult> results = new ArrayList<>();
+        
+        // Query external CMDB
+        String cmdbUrl = config.get("cmdbUrl");
+        String apiKey = config.get("apiKey");
+        
+        // Populate results from CMDB response
+        logs.add(new Log("Searched CMDB for: " + appName));
+        
+        return results.toArray(new InventoryResult[0]);
+    }
+    
+    @Override
+    public List<Log> getLogs() {
+        return logs;
+    }
+}
+```
+
+## Registering Your Extension
+
+Faction uses Java's ServiceLoader mechanism to discover extensions. You must create a service provider configuration file.
+
+### Create Service Provider Configuration
+
+1. Create the directory structure:
+   ```bash
+   mkdir -p src/main/resources/META-INF/services
+   ```
+
+2. Create a file named after the interface you're implementing:
+
+   **For AssessmentManager**:
+   ```bash
+   # File: src/main/resources/META-INF/services/com.faction.extender.AssessmentManager
+   com.yourcompany.faction.extension.JiraIntegrationExtension
+   ```
+
+   **For VulnerabilityManager**:
+   ```bash
+   # File: src/main/resources/META-INF/services/com.faction.extender.VulnerabilityManager
+   com.yourcompany.faction.extension.VulnerabilityEnrichmentExtension
+   ```
+
+   **For ReportManager**:
+   ```bash
+   # File: src/main/resources/META-INF/services/com.faction.extender.ReportManager
+   com.yourcompany.faction.extension.ChartGeneratorExtension
+   ```
+
+<Note>
+The file name must match the fully qualified interface name, and the content should be the fully qualified name of your implementation class.
+</Note>
+
+## Building Your Extension
+
+### Compile and Package
+
+Build your extension JAR:
+
+```bash
+mvn clean package
+```
+
+This generates a JAR file in the `target/` directory:
+```
+target/faction-custom-extension-1.0.0.jar
+```
+
+### Verify Package Structure
+
+Ensure your JAR contains:
+- Compiled class files
+- META-INF/services/ configuration files
+- Any additional resources
+
+Verify with:
+```bash
+jar tf target/faction-custom-extension-1.0.0.jar | grep -E "(services|class)"
+```
+
+## Testing Extensions Locally
+
+### 1. Upload to Faction
+
+1. Log into your Faction instance
+2. Navigate to the App Store
+3. Click **Upload Extension**
+4. Select your JAR file
+5. Configure the extension with test parameters
+
+### 2. Enable for Testing
+
+1. Enable the extension for the appropriate event type
+2. Set it to execute last (higher order number) to avoid disrupting existing extensions
+
+### 3. Trigger Test Events
+
+Depending on your extension type:
+
+- **AssessmentManager**: Create or complete a test assessment
+- **VulnerabilityManager**: Add or modify a vulnerability
+- **VerificationManager**: Run a retest
+- **ReportManager**: Generate a report
+- **ApplicationInventory**: Search the application inventory
+
+### 4. Review Logs
+
+1. Navigate to **Settings** > **System Logs**
+2. Filter by your extension name
+3. Check for errors or expected log messages
+4. Verify your extension executed correctly
+
+### Debugging Tips
+
+- Use extensive logging (`getLogs()`) to trace execution
+- Test with simple data first, then add complexity
+- Check for null values in assessment/vulnerability data
+- Validate configuration parameters before use
+- Handle exceptions gracefully and log errors
+
+## Extension Best Practices
+
+### Configuration Management
+
+```java
+private Map<String, String> config;
+
+@Override
+public void setConfigs(Map<String, String> configs) {
+    this.config = configs;
+    
+    // Validate required configuration
+    if (!config.containsKey("apiUrl")) {
+        logs.add(new Log("ERROR: apiUrl configuration is required"));
+    }
+}
+```
+
+### Error Handling
+
+```java
+@Override
+public AssessmentManagerResult assessmentChange(
+        Assessment assessment,
+        List<Vulnerability> vulnerabilities,
+        Operation operation) {
+    
+    try {
+        // Your extension logic
+        processAssessment(assessment);
+    } catch (Exception e) {
+        logs.add(new Log("ERROR: " + e.getMessage()));
+        e.printStackTrace();
+    }
+    
+    return null;
+}
+```
+
+### Logging
+
+```java
+import com.faction.elements.utils.Log;
+
+private List<Log> logs = new ArrayList<>();
+
+// Add informational logs
+logs.add(new Log("Processing vulnerability: " + vuln.getId()));
+
+// Add error logs
+logs.add(new Log("ERROR: Failed to connect to external API"));
+
+@Override
+public List<Log> getLogs() {
+    return logs;
+}
+```
+
+### Return Values
+
+- Return `null` if you don't need to modify data
+- Return modified objects to persist changes
+- Faction automatically persists returned data to the database
+
+### Security Considerations
+
+- Never hardcode credentials or API keys
+- Always use the configuration system for sensitive data
+- Validate all external input
+- Use HTTPS for external API calls
+- Sanitize data before persisting
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="API Reference" icon="book" href="/extensions/api-reference">
+    Explore detailed API documentation
+  </Card>
+  <Card title="App Store" icon="store" href="/extensions/app-store">
+    Learn how to submit your extension
+  </Card>
+</CardGroup>

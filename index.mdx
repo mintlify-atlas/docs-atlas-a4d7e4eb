@@ -1,97 +1,164 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: "Faction Documentation"
+description: "Complete penetration testing report generation and collaboration platform"
+mode: "custom"
 ---
 
-## Setting up
+<div className="relative overflow-hidden dark:bg-[#0B1224] bg-white py-20">
+  <div className="absolute inset-0 bg-gradient-to-br dark:from-[#1c92e1]/10 dark:via-transparent dark:to-[#8568d1]/10 from-[#1c92e1]/5 via-transparent to-[#8568d1]/5"></div>
+  <div className="relative max-w-6xl mx-auto px-6 lg:px-8">
+    <div className="lg:grid lg:grid-cols-12 lg:gap-8 items-center">
+      <div className="lg:col-span-7">
+        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold dark:text-white text-gray-900 mb-6">
+          Streamline Your Penetration Testing Workflow
+        </h1>
+        <p className="text-lg sm:text-xl dark:text-gray-300 text-gray-600 mb-8 max-w-2xl">
+          Faction is an all-in-one platform for security teams to create professional penetration testing reports, collaborate in real-time, and track vulnerability remediation from discovery to resolution.
+        </p>
+        <div className="flex flex-wrap gap-4">
+          <a
+            href="/quickstart"
+            className="inline-flex items-center px-6 py-3 rounded-lg text-white font-semibold transition-all bg-[#1c92e1] hover:bg-[#1581ca] shadow-lg hover:shadow-xl"
+          >
+            Get Started
+            <svg className="ml-2 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+            </svg>
+          </a>
+          <a
+            href="/api/introduction"
+            className="inline-flex items-center px-6 py-3 rounded-lg font-semibold transition-all dark:bg-white/10 dark:text-white dark:border-white/30 dark:hover:bg-white/20 bg-gray-100 text-gray-900 border border-gray-300 hover:bg-gray-200"
+          >
+            Explore API
+          </a>
+        </div>
+      </div>
+      <div className="hidden lg:block lg:col-span-5 mt-12 lg:mt-0">
+        <div className="relative">
+          <div className="absolute inset-0 dark:bg-gradient-to-r dark:from-[#1c92e1]/20 dark:to-[#8568d1]/20 bg-gradient-to-r from-[#1c92e1]/10 to-[#8568d1]/10 blur-3xl"></div>
+          <div className="relative dark:bg-[#1a1d27] bg-gray-50 rounded-2xl p-6 dark:border dark:border-white/10 border border-gray-200 shadow-2xl">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-3 h-3 rounded-full bg-red-500"></div>
+              <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+              <div className="w-3 h-3 rounded-full bg-green-500"></div>
+            </div>
+            <div className="space-y-3 font-mono text-sm">
+              <div className="dark:text-gray-400 text-gray-600">$ faction --version</div>
+              <div className="dark:text-green-400 text-green-600">Faction v1.7.5</div>
+              <div className="dark:text-gray-400 text-gray-600">$ docker-compose up</div>
+              <div className="dark:text-blue-400 text-blue-600">✓ Database ready</div>
+              <div className="dark:text-blue-400 text-blue-600">✓ Server running on :8080</div>
+              <div className="dark:text-green-400 text-green-600">Ready for assessments</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
-Get your documentation site up and running in minutes.
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <h2 className="text-3xl font-bold dark:text-white text-gray-900 mb-4">Quick Start</h2>
+  <p className="text-lg dark:text-gray-400 text-gray-600 mb-8">Get Faction running in minutes</p>
+  
+  <Steps>
+    <Step title="Install with Docker">
+      Clone the repository and start the containers:
+      
+      ```bash
+      git clone https://github.com/factionsecurity/faction.git
+      cd faction
+      docker-compose up --build
+      ```
+      
+      <Note>MongoDB requires a CPU with AVX support. Check compatibility if using VirtualBox or Kubernetes.</Note>
+    </Step>
+    
+    <Step title="Access Your Instance">
+      Navigate to `http://127.0.0.1:8080` in your browser. On first boot, you'll be prompted to create an admin account.
+    </Step>
+    
+    <Step title="Import Vulnerability Templates">
+      Go to **Templates** → **Default Vulnerabilities** and click **Update from Faction** to import 75+ pre-populated vulnerability templates.
+    </Step>
+    
+    <Step title="Create Your First Assessment">
+      Create a new assessment, assign team members, and start collaborating. Use the [Burp Suite extension](/integrations/burp-suite) to send findings directly from Burp to Faction.
+    </Step>
+  </Steps>
+</div>
 
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <h2 className="text-3xl font-bold dark:text-white text-gray-900 mb-4">Core Features</h2>
+  <p className="text-lg dark:text-gray-400 text-gray-600 mb-8">Everything you need for professional penetration testing</p>
+  
+  <CardGroup cols={2}>
+    <Card title="Automated Reporting" icon="file-export" href="/features/reporting">
+      Generate professional DOCX reports with customizable templates. No more manual copy-paste.
+    </Card>
+    <Card title="Real-Time Collaboration" icon="users" href="/features/collaboration">
+      Work together seamlessly with team members via web interface and Burp Suite integration.
+    </Card>
+    <Card title="Vulnerability Tracking" icon="bug" href="/features/vulnerabilities">
+      Track findings from discovery through remediation with custom SLA alerts and status updates.
+    </Card>
+    <Card title="Peer Review System" icon="magnifying-glass" href="/features/peer-review">
+      Built-in peer review with track changes ensures quality before report delivery.
+    </Card>
+    <Card title="Extension Platform" icon="puzzle-piece" href="/extensions/app-store">
+      Extend Faction with custom plugins for Jira, ServiceNow, and custom workflows.
+    </Card>
+    <Card title="Full REST API" icon="code" href="/api/introduction">
+      Integrate with your tools using our comprehensive REST API.
+    </Card>
+  </CardGroup>
+</div>
 
-## Make it yours
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <h2 className="text-3xl font-bold dark:text-white text-gray-900 mb-4">Explore by Topic</h2>
+  <p className="text-lg dark:text-gray-400 text-gray-600 mb-8">Find what you need to accomplish your goals</p>
+  
+  <CardGroup cols={3}>
+    <Card title="Creating Assessments" icon="clipboard-check" href="/guides/creating-assessments">
+      Schedule and manage security assessments
+    </Card>
+    <Card title="Custom Templates" icon="file-lines" href="/guides/custom-templates">
+      Design report templates for different assessment types
+    </Card>
+    <Card title="Team Management" icon="user-group" href="/guides/team-management">
+      Organize teams and control access permissions
+    </Card>
+    <Card title="Burp Suite Integration" icon="shield-halved" href="/integrations/burp-suite">
+      Send findings directly from Burp to Faction
+    </Card>
+    <Card title="Extension Development" icon="code-branch" href="/extensions/development">
+      Build custom extensions for your workflow
+    </Card>
+    <Card title="API Reference" icon="terminal" href="/api/introduction">
+      Complete REST API documentation
+    </Card>
+  </CardGroup>
+</div>
 
-Design a docs site that looks great and empowers your users.
-
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
-  </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
-  </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
-  </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
-  </Card>
-</Columns>
-
-## Create beautiful pages
-
-Everything you need to create world-class documentation.
-
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
-  </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
-  </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
-  </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
-
-## Need inspiration?
-
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <div className="dark:bg-gradient-to-br dark:from-[#1c92e1]/20 dark:to-[#8568d1]/20 bg-gradient-to-br from-[#1c92e1]/10 to-[#8568d1]/10 rounded-2xl p-8 dark:border dark:border-white/10 border border-gray-200">
+    <h2 className="text-2xl font-bold dark:text-white text-gray-900 mb-3">Ready to streamline your pentesting workflow?</h2>
+    <p className="dark:text-gray-300 text-gray-700 mb-6 max-w-2xl">
+      Join security teams using Faction to deliver professional reports faster and track remediation more effectively.
+    </p>
+    <div className="flex flex-wrap gap-4">
+      <a
+        href="/installation"
+        className="inline-flex items-center px-6 py-3 rounded-lg text-white font-semibold transition-all bg-[#1c92e1] hover:bg-[#1581ca]"
+      >
+        Install Faction
+      </a>
+      <a
+        href="https://github.com/factionsecurity/faction"
+        className="inline-flex items-center px-6 py-3 rounded-lg font-semibold transition-all dark:bg-white/10 dark:text-white dark:hover:bg-white/20 bg-white text-gray-900 hover:bg-gray-50"
+      >
+        View on GitHub
+      </a>
+    </div>
+  </div>
+</div>

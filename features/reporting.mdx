@@ -1,0 +1,358 @@
+---
+title: 'Reporting'
+description: 'Generate professional security assessment reports with customizable DOCX templates'
+icon: 'file-pdf'
+---
+
+## Overview
+
+Faction's reporting engine transforms assessment data into professional DOCX reports using customizable templates. The system supports multiple report templates per team, assessment-type-specific templates, retest reports, and advanced customization through report variables.
+
+## Report Templates
+
+Report templates are managed through the `ReportTemplates` class (src/com/fuse/dao/ReportTemplates.java) and support extensive customization.
+
+### Template Properties
+
+```java
+// ReportTemplates.java core fields
+private String name;           // Template identifier
+private String variable;       // Template variable name for code reference
+private String filename;       // Original DOCX filename
+private Teams team;            // Team that owns this template
+private AssessmentType type;   // Assessment type (e.g., Web App, Network)
+private boolean retest;        // Whether this is a retest template
+private String fileType;       // Output format (typically "docx")
+```
+
+### Template Storage
+
+Templates can be stored in two ways:
+
+<Tabs>
+  <Tab title="Database Storage">
+    Templates stored as base64-encoded data within the database:
+    
+    ```java
+    private Boolean saveInDB = false;
+    private String base64EncodedTemplate;  // Encoded DOCX file
+    ```
+    
+    Benefits:
+    - No filesystem dependencies
+    - Included in database backups
+    - Easier deployment
+  </Tab>
+  
+  <Tab title="File System Storage">
+    Templates stored as files on the server filesystem.
+    
+    Benefits:
+    - Easier to edit with Word
+    - Smaller database size
+    - Version control friendly
+  </Tab>
+</Tabs>
+
+## Report Types
+
+### Assessment Reports
+
+Full reports generated after completing security assessments:
+
+```java
+// FinalReport.java stores generated reports (Assessment.java:66)
+@OneToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+private FinalReport finalReport;
+```
+
+### Retest Reports
+
+Specialized reports for remediation validation:
+
+```java
+// Separate retest report storage (Assessment.java:70)
+@OneToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+private FinalReport retestReport;
+```
+
+<Info>
+Retest templates typically include only re-tested vulnerabilities and remediation status, providing a focused validation document.
+</Info>
+
+## Report Generation
+
+The report generation process transforms assessment data into formatted DOCX files:
+
+### Generation Flow
+
+<Steps>
+  <Step title="Select Template">
+    System identifies appropriate template based on:
+    - Assessment type
+    - Team assignment
+    - Retest flag
+  </Step>
+  
+  <Step title="Load Template">
+    Template retrieved from database or filesystem:
+    
+    ```java
+    @Transient
+    public InputStream getTemplate() {
+        String b64Template = this.getBase64EncodedTemplate();
+        byte[] docx = Base64.decodeBase64(b64Template);
+        return new ByteArrayInputStream(docx);
+    }
+    ```
+  </Step>
+  
+  <Step title="Replace Variables">
+    Assessment data populates template placeholders
+  </Step>
+  
+  <Step title="Generate Output">
+    Final DOCX created and stored as `FinalReport`
+  </Step>
+</Steps>
+
+## Report Variables
+
+Templates use variables to dynamically insert assessment data. Common variables include:
+
+### Standard Variables
+
+| Variable | Description | Source |
+|----------|-------------|--------|
+| `{{assessment.name}}` | Assessment name | Assessment.java:41 |
+| `{{assessment.summary}}` | Executive summary | Assessment.java:39 |
+| `{{assessment.riskAnalysis}}` | Risk analysis section | Assessment.java:40 |
+| `{{assessment.start}}` | Start date | Assessment.java:49 |
+| `{{assessment.end}}` | End date | Assessment.java:50 |
+| `{{assessment.appId}}` | Target application | Assessment.java:48 |
+
+### Vulnerability Variables
+
+Templates can iterate over vulnerabilities:
+
+```
+{{#vulnerabilities}}
+  Name: {{name}}
+  Severity: {{overall}}
+  Description: {{description}}
+  Recommendation: {{recommendation}}
+  Details: {{details}}
+{{/vulnerabilities}}
+```
+
+### Custom Field Variables
+
+Custom fields are accessible in templates:
+
+```
+{{#customFields}}
+  {{fieldName}}: {{fieldValue}}
+{{/customFields}}
+```
+
+<Tip>
+Refer to the [Custom Report Templates documentation](/guides/custom-templates) for comprehensive variable reference and advanced templating techniques.
+</Tip>
+
+## Graphics and Charts
+
+Faction supports embedding charts and graphics in reports through extensions:
+
+### Chart Types
+
+<CardGroup cols={3}>
+  <Card title="Vulnerability Distribution" icon="chart-pie">
+    Pie charts showing findings by severity level
+  </Card>
+  <Card title="Category Breakdown" icon="chart-bar">
+    Bar charts of vulnerabilities by category (XSS, SQLi, etc.)
+  </Card>
+  <Card title="Risk Trends" icon="chart-line">
+    Line charts showing risk over time for campaigns
+  </Card>
+</CardGroup>
+
+### Extension-Based Graphics
+
+The App Store extension system enables custom chart generation:
+
+```java
+// ReportFeatures.java extension points
+public static byte[] finalizeReport(byte[] report, String reportType) {
+    return report;  // Extensions can modify report before finalization
+}
+```
+
+Extensions can:
+- Generate charts from assessment data
+- Insert graphics into DOCX templates
+- Create custom visualizations
+- Add compliance matrices
+
+<Note>
+The Jira integration and other App Store extensions demonstrate graphics capabilities for vulnerability distribution and status tracking.
+</Note>
+
+## Large Report Handling
+
+Faction automatically handles large reports by chunking the data:
+
+```java
+// FinalReport.java chunking for reports >15MB (line 67)
+private Boolean largeFile = false;
+@OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+private List<FinalReportPart> parts = new ArrayList<>();
+
+if(base64EncodedPdf != null && base64EncodedPdf.length() > 15_000_000) {
+    this.largeFile = true;
+    String[] chunks = this.chunk(base64EncodedPdf);
+    // Split into 15MB chunks for database storage
+}
+```
+
+<Warning>
+Reports with many screenshots or detailed findings may exceed database field limits. Faction automatically splits these into manageable chunks.
+</Warning>
+
+## Template Management
+
+### Default Template Initialization
+
+New teams automatically receive a sample template:
+
+```java
+// ReportTemplates.java:117-149 - Downloads default template
+public void initDefaultTemplate(Teams team, AssessmentType type) {
+    String defaultReportName = "default-report-template.docx";
+    URL defaultTemplateURL = new URL(
+        "https://github.com/factionsecurity/report_templates/raw/main/" + defaultReportName);
+    // Downloads and initializes template
+}
+```
+
+### Template Customization
+
+<Steps>
+  <Step title="Download Template">
+    Export existing template or start with default template
+  </Step>
+  
+  <Step title="Edit in Word">
+    Modify formatting, add your branding, customize sections
+  </Step>
+  
+  <Step title="Add Variables">
+    Insert Faction variables where dynamic data should appear
+  </Step>
+  
+  <Step title="Upload Template">
+    Upload customized DOCX back to Faction
+  </Step>
+  
+  <Step title="Test Generation">
+    Generate a test report to verify formatting and variables
+  </Step>
+</Steps>
+
+## File Type Support
+
+While DOCX is the primary format, Faction's architecture supports extensibility:
+
+```java
+// ReportFeatures.java defines available formats
+public static String[] getReportOptions() {
+    return new String[] {"docx"};
+}
+```
+
+<Info>
+Future versions may support additional formats like PDF, HTML, or Markdown through the extension system.
+</Info>
+
+## Report Storage
+
+Generated reports are stored in the `FinalReport` entity:
+
+```java
+// FinalReport.java key fields
+private String filename;           // Report filename
+private String base64EncodedPdf;   // Base64-encoded report content
+private Date gentime;              // Generation timestamp
+private Boolean retest;            // Retest report flag
+private String fileType;           // File format ("docx")
+```
+
+Reports include metadata:
+- **Generation time**: When report was created
+- **Report type**: Assessment or retest
+- **File format**: Output format used
+- **File size**: Whether chunking was required
+
+## Multi-Template Strategy
+
+Organizations can maintain multiple templates:
+
+### By Assessment Type
+
+- **Web Application**: Focused on OWASP findings
+- **Network Penetration Test**: Infrastructure-focused layout
+- **Cloud Security Review**: Cloud-specific sections and compliance
+- **Mobile Application**: Mobile platform considerations
+
+### By Client or Compliance
+
+- **PCI DSS**: Include PCI-specific language and requirements
+- **SOC 2**: Align with trust service criteria
+- **Custom Client Templates**: Match client's preferred format
+
+### By Report Scope
+
+- **Executive Summary**: High-level overview for leadership
+- **Technical Details**: In-depth findings for security teams
+- **Retest Validation**: Remediation-focused reporting
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Version Control Templates">
+    Maintain template versions to track changes over time. Download templates before making significant changes.
+  </Accordion>
+  
+  <Accordion title="Test Variable Substitution">
+    Always generate test reports after template changes to ensure variables populate correctly.
+  </Accordion>
+  
+  <Accordion title="Standardize Formatting">
+    Use consistent styles in Word templates (Heading 1, Heading 2, etc.) for professional appearance.
+  </Accordion>
+  
+  <Accordion title="Include Branding">
+    Add company logos, color schemes, and footer information to templates for branded reports.
+  </Accordion>
+  
+  <Accordion title="Plan for Graphics">
+    Reserve space in templates for charts and graphics that extensions will generate.
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Custom Templates Guide" icon="palette" href="/guides/custom-templates">
+    Comprehensive guide to creating custom report templates
+  </Card>
+  <Card title="Assessments" icon="clipboard-list" href="/features/assessments">
+    Learn about assessment data included in reports
+  </Card>
+  <Card title="Vulnerabilities" icon="bug" href="/features/vulnerabilities">
+    Understand vulnerability data for reporting
+  </Card>
+  <Card title="App Store Extensions" icon="puzzle-piece" href="/quickstart">
+    Extend reporting with custom graphics and features
+  </Card>
+</CardGroup>

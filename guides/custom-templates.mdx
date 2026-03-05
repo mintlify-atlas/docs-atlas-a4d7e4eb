@@ -1,0 +1,365 @@
+---
+title: 'Custom Report Templates'
+description: 'Create customized DOCX report templates with variables, sections, and branding'
+icon: 'file-word'
+---
+
+## Overview
+
+Faction allows you to create fully customized Microsoft Word (DOCX) report templates for different assessment types and retests. This guide covers template creation, variable usage, section organization, and custom graphics integration.
+
+## Template System Architecture
+
+Faction uses a variable-replacement template engine:
+
+1. Create a DOCX template with placeholder variables
+2. Assign template to assessment types
+3. During report generation, Faction replaces variables with assessment data
+4. Final report maintains your formatting, branding, and structure
+
+<Info>
+  Multiple templates can exist for different assessment types (Web App, API, Mobile) or purposes (initial assessment vs. retest).
+</Info>
+
+## Creating a Custom Template
+
+<Steps>
+  <Step title="Start with a Word Document">
+    Create a new Microsoft Word (DOCX) document with your desired:
+    
+    - Company branding and logo
+    - Header and footer formatting
+    - Font styles and sizes
+    - Color scheme
+    - Page layout and margins
+    - Section organization
+  </Step>
+
+  <Step title="Add Template Variables">
+    Insert placeholder variables where dynamic content should appear. Variables use the format:
+    
+    ```
+    {{variable_name}}
+    ```
+    
+    ### Standard Assessment Variables
+    
+    - `{{assessment_name}}` - Assessment name
+    - `{{app_id}}` - Application identifier
+    - `{{start_date}}` - Assessment start date
+    - `{{end_date}}` - Assessment end date
+    - `{{assessor_name}}` - Lead assessor name
+    - `{{assessor_team}}` - Assessor team name
+    - `{{engagement_contact}}` - Engagement contact name
+    - `{{summary}}` - Executive summary content
+    - `{{risk_analysis}}` - Risk analysis section
+    
+    ### Vulnerability Variables
+    
+    - `{{vulnerabilities}}` - Full vulnerability table/list
+    - `{{vulnerability_count}}` - Total number of findings
+    - `{{critical_count}}` - Count by severity
+    - `{{high_count}}` - High severity count
+    - `{{medium_count}}` - Medium severity count
+    - `{{low_count}}` - Low severity count
+    
+    <Note>
+      Contact Faction support or check the documentation at [/guides/custom-templates](/guides/custom-templates) for a complete variable reference.
+    </Note>
+  </Step>
+
+  <Step title="Structure Vulnerability Sections">
+    Create repeating sections for vulnerability details:
+    
+    ```
+    Vulnerability: {{vuln_name}}
+    
+    Description:
+    {{vuln_description}}
+    
+    Recommendation:
+    {{vuln_recommendation}}
+    
+    Details:
+    {{vuln_details}}
+    
+    Risk Rating: {{vuln_overall}}
+    Category: {{vuln_category}}
+    Tracking ID: {{vuln_tracking_id}}
+    ```
+    
+    Faction will repeat this section for each vulnerability found during the assessment.
+  </Step>
+
+  <Step title="Add Custom Field Variables">
+    If you've configured custom fields at the assessment or organization level, reference them:
+    
+    ```
+    {{custom_field_name}}
+    ```
+    
+    Common custom field uses:
+    - Compliance framework identification
+    - Business unit or department
+    - Vendor or client name
+    - Contract or project numbers
+    - Custom report metadata
+    
+    <Tip>
+      Create custom field variables for frequently reused text blocks like legal disclaimers or testing methodology descriptions.
+    </Tip>
+  </Step>
+
+  <Step title="Configure Section Organization">
+    Organize vulnerabilities by:
+    
+    ### By Risk Level
+    Group all critical findings, then high, medium, and low. This is the default sorting.
+    
+    ### By Category
+    Group by OWASP Top 10, CWE category, or custom categorization:
+    
+    ```
+    {{vulnerabilities_by_category}}
+    ```
+    
+    ### By Custom Section
+    If your assessment uses custom sections (Web, API, Mobile), organize accordingly:
+    
+    ```
+    {{section_web_vulnerabilities}}
+    {{section_api_vulnerabilities}}
+    {{section_mobile_vulnerabilities}}
+    ```
+    
+    <Info>
+      Section organization must be enabled in assessment type settings and supported by your Faction version.
+    </Info>
+  </Step>
+
+  <Step title="Insert Charts and Graphics">
+    ### Using Extensions for Custom Graphics
+    
+    Faction's Extension system (App Store) allows custom bar charts and graphics in reports:
+    
+    1. Install chart extensions from the Faction App Store
+    2. Reference chart placeholders in your template:
+    
+    ```
+    {{risk_distribution_chart}}
+    {{category_breakdown_chart}}
+    {{timeline_chart}}
+    ```
+    
+    3. Extensions generate charts during report creation
+    4. Charts are embedded as images in the final DOCX
+    
+    <Note>
+      Custom graphics require the Faction Extension system introduced in version 1.2+. See the README for extension documentation.
+    </Note>
+    
+    ### Static Images
+    
+    Embed static images (logos, diagrams) directly in the template - they'll be preserved in generated reports.
+  </Step>
+
+  <Step title="Add Table of Contents">
+    Insert a Word table of contents:
+    
+    1. In Word, go to **References > Table of Contents**
+    2. Choose a style
+    3. The TOC will update based on your heading styles
+    
+    <Warning>
+      Recipients may need to right-click the TOC and select "Update Field" to refresh page numbers in the generated report.
+    </Warning>
+  </Step>
+
+  <Step title="Style Vulnerability Tables">
+    Format vulnerability tables with:
+    
+    - Consistent column widths
+    - Header row styling
+    - Alternating row colors
+    - Border styles
+    - Cell padding
+    
+    Faction preserves table formatting when inserting vulnerability data.
+  </Step>
+
+  <Step title="Save Template">
+    Save as a DOCX file with a descriptive name:
+    
+    - `web-app-assessment-template.docx`
+    - `api-pentest-template.docx`
+    - `retest-report-template.docx`
+  </Step>
+
+  <Step title="Upload to Faction">
+    1. Navigate to **Templates > Report Templates** in Faction
+    2. Click **Upload Template**
+    3. Select your DOCX file
+    4. Assign to one or more assessment types
+    5. Set as default for that type (optional)
+  </Step>
+
+  <Step title="Test Template">
+    Generate a test report:
+    
+    1. Create or select an assessment with sample data
+    2. Choose your new template
+    3. Generate report
+    4. Review formatting, variable replacement, and layout
+    5. Iterate as needed
+  </Step>
+</Steps>
+
+## Template Variables Reference
+
+### Assessment-Level Variables
+
+| Variable | Description |
+|----------|-------------|
+| `{{assessment_name}}` | Name of the assessment |
+| `{{app_id}}` | Application/project identifier |
+| `{{start_date}}` | Assessment start date |
+| `{{end_date}}` | Assessment end date |
+| `{{completed_date}}` | When assessment was finalized |
+| `{{summary}}` | Executive summary content |
+| `{{risk_analysis}}` | Risk analysis section |
+| `{{assessor_name}}` | Primary assessor full name |
+| `{{assessor_email}}` | Assessor email address |
+| `{{assessor_team}}` | Team name |
+| `{{engagement_name}}` | Engagement contact |
+| `{{remediation_name}}` | Remediation contact |
+| `{{distribution_list}}` | Email distribution list |
+
+### Vulnerability-Level Variables
+
+| Variable | Description |
+|----------|-------------|
+| `{{vuln_name}}` | Vulnerability title |
+| `{{vuln_description}}` | Full description |
+| `{{vuln_recommendation}}` | Remediation guidance |
+| `{{vuln_details}}` | Exploit details and POC |
+| `{{vuln_category}}` | OWASP/CWE category |
+| `{{vuln_likelihood}}` | Likelihood rating |
+| `{{vuln_impact}}` | Impact rating |
+| `{{vuln_overall}}` | Overall risk severity |
+| `{{vuln_cvss_score}}` | CVSS numeric score |
+| `{{vuln_cvss_vector}}` | CVSS vector string |
+| `{{vuln_tracking_id}}` | Unique tracking ID |
+| `{{vuln_opened}}` | Discovery date |
+| `{{vuln_closed}}` | Production closure date |
+
+### Count and Statistics Variables
+
+| Variable | Description |
+|----------|-------------|
+| `{{total_vulnerabilities}}` | Total finding count |
+| `{{critical_count}}` | Critical severity count |
+| `{{high_count}}` | High severity count |
+| `{{medium_count}}` | Medium severity count |
+| `{{low_count}}` | Low severity count |
+| `{{info_count}}` | Informational count |
+
+## Retest Report Templates
+
+Create specialized templates for verification/retest reports:
+
+- Include original vulnerability status
+- Show before/after risk levels
+- Highlight which issues were fixed vs. remain open
+- Reference original assessment and tracking IDs
+
+Assign retest templates separately from initial assessment templates in the template configuration.
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Test with Real Data" icon="vial">
+    Use an actual assessment with representative findings to test template formatting.
+  </Card>
+  
+  <Card title="Keep Formatting Simple" icon="minimize">
+    Avoid complex Word features that may not translate well during generation.
+  </Card>
+  
+  <Card title="Use Heading Styles" icon="heading">
+    Apply Word heading styles (Heading 1, 2, 3) for proper TOC generation.
+  </Card>
+  
+  <Card title="Version Control Templates" icon="code-branch">
+    Maintain template versions and document changes for audit purposes.
+  </Card>
+  
+  <Card title="Include Legal Disclaimers" icon="gavel">
+    Add scope limitations, disclaimers, and confidentiality statements to templates.
+  </Card>
+  
+  <Card title="Brand Consistently" icon="palette">
+    Use organization colors, fonts, and logos for professional appearance.
+  </Card>
+</CardGroup>
+
+## Extension-Based Custom Graphics
+
+Faction 1.2+ includes an App Store for extensions that can:
+
+- Generate custom bar charts
+- Create vulnerability distribution graphs
+- Add timeline visualizations
+- Produce custom metrics dashboards
+
+Extensions run during report generation and insert graphics into template placeholders.
+
+<Info>
+  See the [Faction App Store documentation](/introduction) and README for available extensions and development guides.
+</Info>
+
+## Troubleshooting Templates
+
+<AccordionGroup>
+  <Accordion title="Variables not being replaced" icon="exclamation-triangle">
+    - Check variable spelling and case sensitivity
+    - Ensure variables use correct `{{variable}}` format
+    - Verify the variable exists in Faction's variable list
+  </Accordion>
+  
+  <Accordion title="Formatting issues in generated report" icon="align-left">
+    - Simplify Word formatting (avoid complex styles)
+    - Use tables for structured layout
+    - Test with minimal formatting first, then add complexity
+  </Accordion>
+  
+  <Accordion title="Images not appearing" icon="image">
+    - Verify image files are uploaded to assessment
+    - Check image references use correct format
+    - Ensure images are in supported formats (PNG, JPG)
+  </Accordion>
+  
+  <Accordion title="Table of Contents not updating" icon="list">
+    - Remind report recipients to right-click TOC and select "Update Field"
+    - Use Word's built-in TOC feature, not manual tables
+  </Accordion>
+</AccordionGroup>
+
+## Related Resources
+
+<CardGroup cols={2}>
+  <Card title="Creating Assessments" icon="file-plus" href="/guides/creating-assessments">
+    Configure assessment types and templates
+  </Card>
+  
+  <Card title="Vulnerability Tracking" icon="bug" href="/guides/vulnerability-tracking">
+    Manage findings that appear in reports
+  </Card>
+  
+  <Card title="Official Template Guide" icon="book" href="/guides/custom-templates">
+    Comprehensive template documentation
+  </Card>
+  
+  <Card title="Extensions & App Store" icon="puzzle-piece" href="/introduction">
+    Add custom graphics and integrations
+  </Card>
+</CardGroup>

@@ -1,0 +1,481 @@
+---
+title: 'Remediation Workflow'
+description: 'Track vulnerability fixes, schedule retests, and manage SLA compliance'
+icon: 'rotate'
+---
+
+## Overview
+
+Faction's remediation workflow helps security and development teams coordinate vulnerability fixes, schedule verification testing, and track closure status. This guide covers the complete remediation lifecycle from assessment finalization through verified production fixes.
+
+## Remediation Lifecycle
+
+The vulnerability remediation process follows these stages:
+
+<Steps>
+  <Step title="Assessment Finalization">
+    When an assessor finalizes an assessment:
+    
+    1. Assessment status changes to "Complete"
+    2. All vulnerabilities are marked with an **Opened** date
+    3. Vulnerabilities enter the remediation queue
+    4. SLA tracking begins automatically
+    5. Remediation contacts receive notification
+    
+    <Info>
+      The opened date triggers SLA countdown timers based on risk severity.
+    </Info>
+  </Step>
+
+  <Step title="Remediation Queue">
+    Vulnerabilities appear in the remediation queue, prioritized by:
+    
+    - Risk severity (Critical, High, Medium, Low)
+    - SLA due dates and warnings
+    - Days open
+    - Application priority
+    
+    Remediation contacts can:
+    - View all open vulnerabilities
+    - Filter by severity, application, or team
+    - Track fix progress
+    - Schedule verification testing
+  </Step>
+
+  <Step title="Development Closure">
+    When a fix is deployed to development/staging:
+    
+    1. Development team marks vulnerability as **Closed in Dev**
+    2. Dev Closed date is recorded
+    3. Vulnerability becomes eligible for verification
+    4. SLA warnings continue (dev closure doesn't stop SLA)
+    
+    <Warning>
+      Closing a vulnerability in development does NOT stop SLA tracking. Only production closure stops the SLA timer.
+    </Warning>
+  </Step>
+
+  <Step title="Verification Scheduling">
+    Remediation contact schedules a retest:
+    
+    1. Select vulnerabilities for verification
+    2. Assign an assessor for retesting
+    3. Set start and end dates for verification window
+    4. Add notes or special instructions
+    5. Notification sent to assigned assessor
+    
+    Verification appears in assessor's queue with all original vulnerability details.
+  </Step>
+
+  <Step title="Verification Testing">
+    Assigned assessor performs retest:
+    
+    - Reviews original vulnerability details
+    - Tests the fix in the target environment
+    - Documents verification results
+    - Marks as **Pass** or **Fail**
+    
+    ### If Verification Passes
+    - Vulnerability is marked closed in production
+    - Production Closed date recorded
+    - SLA tracking stops
+    - Success notification sent
+    
+    ### If Verification Fails
+    - Vulnerability remains open
+    - Assessor documents why fix was insufficient
+    - Development team notified
+    - New fix cycle begins
+  </Step>
+
+  <Step title="Production Closure">
+    When verification passes and fix is in production:
+    
+    1. **Production Closed** date set
+    2. SLA tracking stops
+    3. Vulnerability removed from remediation queue
+    4. Stakeholders notified of successful remediation
+    5. Closure tracked in vulnerability history
+  </Step>
+</Steps>
+
+## Understanding the Remediation Queue
+
+The remediation queue displays all open vulnerabilities with actionable information:
+
+### Queue Columns
+
+- **Application ID**: Target application identifier
+- **Application Name**: Full application name
+- **Vulnerability**: Finding name
+- **Severity**: Risk rating (Critical/High/Medium/Low)
+- **Opened**: Date vulnerability was discovered
+- **Due Date**: SLA deadline for remediation
+- **Status Badges**: Visual indicators for urgency
+
+### Status Badges
+
+<AccordionGroup>
+  <Accordion title="Vulnerability Past Due (Red)" icon="bug">
+    SLA deadline has passed. Immediate attention required.
+  </Accordion>
+  
+  <Accordion title="Vulnerability Approaching Due Date (Yellow)" icon="bug">
+    Within warning window of SLA deadline. Fix should be prioritized.
+  </Accordion>
+  
+  <Accordion title="Verification Past Due (Red)" icon="calendar">
+    Scheduled verification window has closed but retest not completed.
+  </Accordion>
+  
+  <Accordion title="Verification Almost Due (Yellow)" icon="calendar">
+    Verification deadline approaching (within 2 days).
+  </Accordion>
+  
+  <Accordion title="In Retest (Green)" icon="calendar">
+    Verification is currently in progress by assigned assessor.
+  </Accordion>
+  
+  <Accordion title="Verification Passed (Green)" icon="check">
+    Fix verified successfully. Ready for production closure.
+  </Accordion>
+  
+  <Accordion title="Verification Failed (Red)" icon="times">
+    Fix was insufficient. Requires additional development work.
+  </Accordion>
+  
+  <Accordion title="Verification Cancelled (Yellow)" icon="times">
+    Verification was cancelled. May need rescheduling.
+  </Accordion>
+</AccordionGroup>
+
+## SLA Warnings and Alerts
+
+Faction automatically calculates SLA deadlines based on:
+
+- **Vulnerability Severity**: Higher severity = shorter SLA
+- **Opened Date**: SLA countdown starts when assessment is finalized
+- **Organization Settings**: Customizable SLA periods per severity
+
+### Default SLA Periods (Customizable)
+
+| Severity | Due Date | Warning Window |
+|----------|----------|----------------|
+| Critical | 7 days | 2 days before due |
+| High | 30 days | 5 days before due |
+| Medium | 90 days | 14 days before due |
+| Low | 180 days | 30 days before due |
+
+### SLA Configuration
+
+Admins can customize SLA periods in **Settings > System Settings**:
+
+1. Set due date periods for each severity level
+2. Configure warning windows (when yellow badges appear)
+3. Enable/disable email notifications for SLA events
+4. Set notification recipients
+
+<Tip>
+  Align SLA periods with your organization's security policy, compliance requirements, or contractual obligations.
+</Tip>
+
+## Scheduling Verifications
+
+<Steps>
+  <Step title="Access Remediation Module">
+    Navigate to **Remediation > Schedule Verification** with remediation permissions.
+  </Step>
+
+  <Step title="Search for Assessment">
+    Enter the Application ID to find the assessment containing vulnerabilities to verify.
+    
+    <Note>
+      You can also navigate directly from a vulnerability in the remediation queue.
+    </Note>
+  </Step>
+
+  <Step title="Select Vulnerabilities">
+    Choose which vulnerabilities to include in this verification:
+    
+    - Single vulnerability per verification (recommended)
+    - Multiple related vulnerabilities (if fixed together)
+    
+    <Warning>
+      Verification workflow currently handles one vulnerability per verification item. Grouping is possible but may complicate pass/fail tracking.
+    </Warning>
+  </Step>
+
+  <Step title="Assign Assessor">
+    Select the assessor who will perform the retest:
+    
+    - Original assessor (knows the finding)
+    - Available team member
+    - Specialist for specific vulnerability types
+    
+    Use the **Date Search** feature to check assessor availability and avoid scheduling conflicts.
+  </Step>
+
+  <Step title="Assign Remediation Contact">
+    Designate who coordinates the remediation:
+    
+    - Development team lead
+    - DevOps engineer
+    - Product owner
+    - Security liaison
+  </Step>
+
+  <Step title="Set Verification Window">
+    Define when verification should occur:
+    
+    - **Start Date**: When the assessor can begin testing
+    - **End Date**: Deadline for verification completion
+    
+    Allow sufficient time for:
+    - Assessor to review original findings
+    - Perform thorough retesting
+    - Document results
+  </Step>
+
+  <Step title="Update Distribution List">
+    Add or modify email addresses for notifications:
+    
+    - Development team members
+    - Product stakeholders
+    - Management for high-severity issues
+    
+    Separate multiple emails with semicolons:
+    ```
+    dev-team@company.com; manager@company.com; security@company.com
+    ```
+  </Step>
+
+  <Step title="Add Verification Notes">
+    Include any special instructions:
+    
+    - Testing credentials or access
+    - Specific environments to test
+    - Areas of concern
+    - Context about the fix
+  </Step>
+
+  <Step title="Create Verification">
+    Click **Schedule Verification**. The system:
+    
+    1. Creates verification record
+    2. Links to original vulnerability
+    3. Sets workflow status to "In Queue"
+    4. Sends email notification to assessor and contacts
+    5. Adds to assessor's verification queue
+  </Step>
+</Steps>
+
+## Assessor Verification Process
+
+When an assessor receives a verification assignment:
+
+### Accessing Verifications
+
+1. Navigate to **Remediation Queue** or **My Verifications**
+2. View assigned verifications with status badges
+3. Click verification to see details
+
+### Reviewing Verification Details
+
+- **Original Vulnerability**: Full details of initial finding
+- **Tracking ID**: Unique identifier linking to original
+- **Assessment Info**: Application ID, name, assessment date
+- **Fix Context**: Notes from remediation contact
+- **Verification Window**: Start and end dates
+
+### Performing the Retest
+
+<Steps>
+  <Step title="Review Original Finding">
+    Study the original vulnerability:
+    - Description and exploit details
+    - Steps to reproduce
+    - Affected components
+    - Risk context
+  </Step>
+
+  <Step title="Test the Fix">
+    Attempt to reproduce the original vulnerability:
+    - Follow original reproduction steps
+    - Test edge cases and variations
+    - Verify fix doesn't introduce new issues
+    - Confirm fix is in the correct environment
+  </Step>
+
+  <Step title="Document Results">
+    Record detailed findings:
+    - What was tested
+    - Results of each test
+    - Screenshots or evidence
+    - Conclusion (Pass/Fail)
+  </Step>
+
+  <Step title="Mark Pass or Fail">
+    ### If Passing
+    - Select **Pass**
+    - Confirm fix is complete and effective
+    - Vulnerability will close in production
+    
+    ### If Failing
+    - Select **Fail**
+    - Document why fix is insufficient
+    - Provide guidance for proper remediation
+    - Vulnerability remains open
+  </Step>
+
+  <Step title="Complete Verification">
+    Save results. Notifications sent to:
+    - Remediation contact
+    - Distribution list
+    - Engagement stakeholders
+  </Step>
+</Steps>
+
+## Dev vs. Production Closure Tracking
+
+Faction tracks two distinct closure states:
+
+### Development Closure
+
+**Purpose**: Indicates fix is ready for verification
+
+- Set when fix deployed to dev/staging
+- Enables verification scheduling
+- Does NOT stop SLA tracking
+- Tracked via `devClosed` field in Vulnerability.java (line 57)
+
+### Production Closure
+
+**Purpose**: Indicates verified fix is in production
+
+- Set when verification passes
+- Stops SLA tracking
+- Removes from remediation queue
+- Official vulnerability closure
+- Tracked via `closed` field in Vulnerability.java (line 54)
+
+<Info>
+  This two-stage tracking ensures fixes are verified before being considered truly remediated, preventing premature closure of vulnerabilities.
+</Info>
+
+## Remediation Queue Filters
+
+Filter the queue to focus on specific vulnerabilities:
+
+- **By Severity**: Show only Critical/High issues
+- **By Application**: Filter to specific app or business unit
+- **By Status**: Open, In Verification, Past Due
+- **By Assigned Contact**: Your assigned vulnerabilities only
+- **By Team**: Team-specific remediation items
+
+### View All vs. Assigned Only
+
+Remediation users can toggle:
+
+- **Assigned to Me**: Only verifications where you're the remediation contact
+- **All**: Every open vulnerability (if permissions allow)
+
+## Verification Workflow States
+
+Verifications progress through workflow states:
+
+| State | Description |
+|-------|-------------|
+| `In Assessor Queue` | Scheduled but not started |
+| `Assessor Completed` | Testing finished, results recorded |
+| `Assessor Cancelled` | Verification was cancelled |
+
+These states are defined in the Verification class and used throughout the remediation workflow.
+
+## Updating Vulnerability Open Dates
+
+In some cases, you may need to adjust when a vulnerability's SLA tracking begins:
+
+1. Access the verification or vulnerability details
+2. Select **Update Open Date**
+3. Set new opened date
+4. SLA calculations adjust automatically
+
+<Warning>
+  Changing open dates affects SLA compliance reporting. Document reasons for any changes for audit purposes.
+</Warning>
+
+## Email Notifications
+
+Faction sends automated emails for remediation events:
+
+- **Assessment Finalized**: Vulnerabilities opened
+- **Verification Scheduled**: Assigned assessor and contacts notified
+- **Verification Updated**: Schedule or details changed
+- **Verification Completed**: Results available
+- **SLA Warnings**: Approaching due dates
+- **SLA Breaches**: Past due vulnerabilities
+
+<Tip>
+  Configure SMTP settings in system configuration to enable email notifications.
+</Tip>
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Regular Queue Reviews" icon="clipboard-check">
+    Check the remediation queue daily to identify new past-due or approaching items.
+  </Card>
+  
+  <Card title="Prompt Verification Scheduling" icon="calendar-plus">
+    Schedule verifications as soon as dev closure is confirmed to maintain momentum.
+  </Card>
+  
+  <Card title="Clear Communication" icon="comment">
+    Use verification notes to provide context and expectations to assessors.
+  </Card>
+  
+  <Card title="Track Recurrence" icon="rotate">
+    Monitor vulnerabilities that fail verification multiple times - may indicate deeper issues.
+  </Card>
+  
+  <Card title="Prioritize by Risk" icon="sort">
+    Focus on Critical and High severity vulnerabilities first to reduce risk exposure.
+  </Card>
+  
+  <Card title="Document Failures" icon="pen">
+    When verification fails, provide detailed feedback to help developers fix properly.
+  </Card>
+</CardGroup>
+
+## Integration with External Systems
+
+Use Faction's Extension system to:
+
+- **Jira Integration**: Auto-create Jira tickets for open vulnerabilities
+- **Slack/Teams Notifications**: Real-time alerts for SLA events
+- **Ticketing Systems**: Sync status with external tracking
+- **Metrics Dashboards**: Export remediation data to BI tools
+
+<Info>
+  The Jira Integration extension is available in the Faction App Store (introduced in version 1.2).
+</Info>
+
+## Related Resources
+
+<CardGroup cols={2}>
+  <Card title="Vulnerability Tracking" icon="bug" href="/guides/vulnerability-tracking">
+    Understanding vulnerability lifecycle
+  </Card>
+  
+  <Card title="Team Management" icon="users" href="/guides/team-management">
+    Assign remediation contacts and permissions
+  </Card>
+  
+  <Card title="Creating Assessments" icon="file-plus" href="/guides/creating-assessments">
+    Set up assessments that feed remediation
+  </Card>
+  
+  <Card title="API Reference" icon="code" href="/api/introduction">
+    Automate remediation workflows via API
+  </Card>
+</CardGroup>

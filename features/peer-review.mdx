@@ -1,0 +1,494 @@
+---
+title: 'Peer Review'
+description: 'Quality assurance workflow with track changes and review approval system'
+icon: 'users'
+---
+
+## Overview
+
+Faction's peer review system provides a comprehensive quality assurance workflow that enables independent review of assessments before final report delivery. The system includes track changes functionality, multi-reviewer support, and a structured approval process.
+
+## Peer Review Workflow
+
+The peer review process is managed through the `PeerReview` class (src/com/fuse/dao/PeerReview.java) and integrated with the assessment workflow.
+
+### Workflow States
+
+Assessments progress through peer review states tracked by the `workflow` field:
+
+<Steps>
+  <Step title="Initial Assessment (0)">
+    Assessor completes testing and documents findings
+  </Step>
+  
+  <Step title="Submitted for Review (1)">
+    Assessor submits assessment for peer review
+    
+    ```java
+    // Assessment.java:548-550
+    @Transient
+    public void setInPr() {
+        this.workflow = 1;
+    }
+    ```
+  </Step>
+  
+  <Step title="Review Complete (2)">
+    Reviewer finishes evaluation and provides feedback
+    
+    ```java
+    // Assessment.java:552-555
+    @Transient
+    public void setPrComplete() {
+        this.workflow = 2;
+    }
+    ```
+  </Step>
+  
+  <Step title="Edits Accepted (3)">
+    Original assessor accepts recommended changes
+    
+    ```java
+    // Assessment.java:557-560
+    @Transient
+    public void setAcceptedEdits() {
+        this.workflow = 3;
+    }
+    ```
+  </Step>
+  
+  <Step title="Finalized (4)">
+    Assessment locked and ready for report generation
+    
+    ```java
+    // Assessment.java:562-565
+    @Transient
+    public void setFinalized() {
+        this.workflow = 4;
+    }
+    ```
+  </Step>
+</Steps>
+
+## PeerReview Entity
+
+Each assessment can have an associated peer review:
+
+```java
+// PeerReview.java structure
+@Entity
+public class PeerReview {
+    private Long id;
+    
+    @OneToMany(fetch = FetchType.EAGER)
+    private List<Comment> comments;  // Review comments and tracked changes
+    
+    @ManyToOne
+    private Assessment assessment;   // Associated assessment
+    
+    private Date created;            // Review submission date
+    private Date completed;          // Review completion date
+    private Date acceptedEdits;      // When edits were accepted
+}
+```
+
+### Key Dates
+
+<CardGroup cols={3}>
+  <Card title="Created" icon="calendar-plus">
+    When assessment was submitted for peer review
+  </Card>
+  <Card title="Completed" icon="calendar-check">
+    When reviewer finished their evaluation
+  </Card>
+  <Card title="Accepted Edits" icon="calendar-star">
+    When assessor accepted reviewer's recommendations
+  </Card>
+</CardGroup>
+
+## Track Changes System
+
+Faction implements a sophisticated track changes system through the `Comment` class (src/com/fuse/dao/Comment.java).
+
+### Comment Structure
+
+```java
+/**
+ * This table contains all PR comments and archived for history
+ */
+@Entity
+public class Comment {
+    private Long id;
+    
+    @OneToMany(fetch = FetchType.EAGER)
+    private List<User> commenters;       // Multiple reviewers can comment
+    
+    private Date dateOfComment;          // Comment timestamp
+    private String comment;              // General review notes
+    
+    // Track changes for assessment sections
+    private String summary1;             // Original summary
+    private String summary2;             // Reviewer's suggested summary
+    private String summary1_notes;       // Comments on summary
+    private String summary2_notes;       // Reviewer notes
+    
+    @ManyToOne
+    private AssessmentType type;         // Assessment type context
+    
+    private Boolean acceptedEdits = false; // Whether changes were accepted
+    
+    @ElementCollection
+    private List<String> vulnerabilities;  // Snapshot of vulnerability state
+}
+```
+
+### Multi-Reviewer Support
+
+Comments support multiple reviewers on the same assessment:
+
+```java
+// Comment.java:64-70 - Adding reviewers
+@Transient
+public void setCommenter(User commenter) {
+    List<User> users = this.getCommenters();
+    if (!users.contains(commenter)) {
+        users.add(commenter);
+        this.setCommeters(users);
+    }
+}
+```
+
+## Tracked Content
+
+### Assessment-Level Changes
+
+The system tracks changes to key assessment sections:
+
+<Tabs>
+  <Tab title="Summary">
+    Executive summary with original and suggested versions:
+    
+    ```java
+    private String summary1;        // Original assessor's summary
+    private String summary2;        // Reviewer's suggested summary
+    private String summary1_notes;  // Reviewer comments on original
+    private String summary2_notes;  // Reviewer notes on suggestion
+    ```
+  </Tab>
+  
+  <Tab title="Risk Analysis">
+    Same structure applies to risk analysis sections, enabling side-by-side comparison of original and suggested content.
+  </Tab>
+</Tabs>
+
+### Vulnerability-Level Changes
+
+Vulnerabilities are captured as JSON snapshots:
+
+```java
+// Comment.java:165-196 - Capturing vulnerability state
+@Transient
+private void addVuln(Vulnerability v, boolean blankNotes) {
+    JSONObject json = new JSONObject();
+    json.put("id", (Long) v.getId());
+    json.put("catName", "" + v.getCategory().getName());
+    json.put("catId", (Long) v.getCategory().getId());
+    json.put("name", v.getName());
+    json.put("desc", v.getDescription());
+    json.put("rec", v.getRecommendation());
+    json.put("details", v.getDetails());
+    json.put("cvss_score", v.getCvssScore());
+    json.put("cvss_string", v.getCvssString());
+    json.put("section", v.getSection());
+    
+    if (blankNotes) {
+        json.put("rec_notes", "<p></p>");
+        json.put("desc_notes", "<p></p>");
+        json.put("detail_notes", "<p></p>");
+    } else {
+        json.put("rec_notes", v.getRec_notes());
+        json.put("desc_notes", v.getDesc_notes());
+        json.put("detail_notes", v.getDetail_notes());
+    }
+    
+    json.put("dv", v.getDefaultVuln() == null ? null : v.getDefaultVuln().getId());
+    json.put("overall", v.getOverall());
+    json.put("likelihood", v.getLikelyhood());
+    json.put("impact", v.getImpact());
+    
+    this.vulnerabilities.add(json.toJSONString());
+}
+```
+
+<Info>
+Vulnerabilities are serialized to JSON to preserve their complete state at the time of review submission, enabling comparison with current state.
+</Info>
+
+## Review Process
+
+### Submitting for Review
+
+When an assessor submits for peer review:
+
+```java
+// Comment.java:212-219 - Copying assessment state
+@Transient
+public void copyAssessment(Assessment a, boolean blankNotes) {
+    this.summary1 = (a.getSummary() == null ? "<p></p>" : a.getSummary());
+    this.summary2 = (a.getRiskAnalysis() == null ? "<p></p>" : a.getRiskAnalysis());
+    this.summary1_notes = ("<p></p>");
+    this.summary2_notes = ("<p></p>");
+    this.type = a.getType();
+    this.addVulns(a.getVulns(), blankNotes);
+}
+```
+
+<Steps>
+  <Step title="Capture State">
+    Assessment content snapshot taken and stored in Comment entity
+  </Step>
+  
+  <Step title="Workflow Update">
+    Assessment workflow set to "In Peer Review" (state 1)
+  </Step>
+  
+  <Step title="Notification">
+    Reviewer(s) notified of pending review
+  </Step>
+  
+  <Step title="Lock Assessment">
+    Original assessor typically cannot edit during active review
+  </Step>
+</Steps>
+
+### Conducting Review
+
+Reviewers evaluate the assessment:
+
+1. **Review vulnerabilities** for technical accuracy and completeness
+2. **Evaluate summary and risk analysis** for clarity and appropriateness
+3. **Add comments and suggestions** in the `summary1_notes` and `summary2_notes` fields
+4. **Propose alternative wording** in the `summary2` field if needed
+5. **Mark review complete** when evaluation is finished
+
+### Accepting Changes
+
+The original assessor reviews feedback:
+
+```java
+// Comment.java:238-275 - Exporting reviewed assessment
+@Transient
+public Assessment exportAssessment(EntityManager em) throws ParseException {
+    Assessment a = new Assessment();
+    a.setSummary(this.summary1);
+    a.setRiskAnalysis(this.summary2);
+    a.setPr_sum_notes(this.summary1_notes);
+    a.setPr_risk_notes(this.summary2_notes);
+    a.setType(this.type);
+    
+    // Reconstruct vulnerabilities from JSON
+    JSONParser parse = new JSONParser();
+    List<Vulnerability> vulns = new ArrayList<>();
+    for (String json : this.vulnerabilities) {
+        Vulnerability v = new Vulnerability();
+        JSONObject vuln = (JSONObject) parse.parse(json);
+        v.setId((Long) vuln.get("id"));
+        v.setName("" + (vuln.get("name") == null ? "" : vuln.get("name")));
+        // ... restore all vulnerability fields
+        vulns.add(v);
+    }
+    a.setVulns(vulns);
+    return a;
+}
+```
+
+<Note>
+The assessor can accept all changes, accept some changes, or reject changes and provide clarification.
+</Note>
+
+## Peer Review Notes
+
+Reviewers can annotate specific vulnerability sections:
+
+```java
+// Vulnerability.java peer review note fields
+private String desc_notes;   // Comments on description
+private String rec_notes;    // Comments on recommendation  
+private String detail_notes; // Comments on technical details
+```
+
+These notes:
+- Appear alongside original content for easy comparison
+- Persist in the assessment for future reference
+- Can be accepted, modified, or rejected by the assessor
+
+## Assessment Peer Review Annotations
+
+Assessments also track peer review notes:
+
+```java
+// Assessment.java:83-85 - Peer review annotations
+private String pr_sum_notes;  // Peer review notes on summary
+private String pr_risk_notes; // Peer review notes on risk analysis
+```
+
+These fields store:
+- Reviewer feedback on summary
+- Reviewer feedback on risk analysis
+- Suggestions for improvement
+- Questions requiring clarification
+
+## Comment History
+
+All peer review comments are preserved:
+
+```java
+// PeerReview.java:29-30
+@OneToMany(fetch = FetchType.EAGER)
+private List<Comment> comments;
+```
+
+This enables:
+- **Historical tracking** of review iterations
+- **Audit trail** for quality assurance
+- **Learning opportunities** from past reviews
+- **Compliance documentation** for regulated industries
+
+## Workflow State Checks
+
+The system provides helper methods to check workflow state:
+
+```java
+// Assessment.java:568-599 - Workflow state checks
+
+@Transient
+public boolean isFinalized() {
+    if (this.workflow != null && this.workflow == 4)
+        return true;
+    else
+        return false;
+}
+
+@Transient
+public boolean isAcceptedEdits() {
+    if(this.workflow != null && this.workflow == 0) {
+        return true;
+    } else if (this.workflow != null && this.workflow == 3)
+        return true;
+    else
+        return false;
+}
+
+@Transient
+public boolean isPrComplete() {
+    if (this.workflow != null && this.workflow == 2)
+        return true;
+    else
+        return false;
+}
+
+@Transient
+public boolean isInPr() {
+    if (this.workflow != null && this.workflow == 1)
+        return true;
+    else
+        return false;
+}
+```
+
+These methods enable:
+- UI state management
+- Permission checks
+- Workflow validation
+- Report generation controls
+
+## Quality Assurance Benefits
+
+<CardGroup cols={2}>
+  <Card title="Accuracy" icon="bullseye">
+    Independent review catches technical errors before client delivery
+  </Card>
+  <Card title="Consistency" icon="equals">
+    Ensures all reports meet organizational quality standards
+  </Card>
+  <Card title="Knowledge Sharing" icon="book">
+    Junior assessors learn from senior reviewer feedback
+  </Card>
+  <Card title="Risk Reduction" icon="shield">
+    Reduces reputational risk from inaccurate or incomplete assessments
+  </Card>
+</CardGroup>
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Establish Review Criteria">
+    Define clear quality standards for technical accuracy, writing quality, completeness, and evidence quality.
+  </Accordion>
+  
+  <Accordion title="Timely Reviews">
+    Set SLAs for peer review turnaround to avoid delaying client deliverables.
+  </Accordion>
+  
+  <Accordion title="Constructive Feedback">
+    Frame suggestions positively, focusing on improvement rather than criticism.
+  </Accordion>
+  
+  <Accordion title="Senior Reviewer Assignment">
+    Assign more experienced assessors to review work from junior team members.
+  </Accordion>
+  
+  <Accordion title="Review Documentation">
+    Maintain a knowledge base of common review findings to improve overall quality.
+  </Accordion>
+  
+  <Accordion title="Reviewer Rotation">
+    Rotate reviewers to prevent bias and spread knowledge across the team.
+  </Accordion>
+</AccordionGroup>
+
+## Integration with Workflow
+
+Peer review integrates with the broader assessment workflow:
+
+1. **Assessment completion** → Submit for peer review
+2. **Peer review** → Reviewer evaluates and provides feedback
+3. **Edit acceptance** → Assessor incorporates changes
+4. **Finalization** → Assessment locked
+5. **Report generation** → Final report created from finalized assessment
+
+<Warning>
+Once an assessment is finalized (workflow = 4), it should not be edited. Create a new assessment or retest if additional changes are needed.
+</Warning>
+
+## Compliance and Auditing
+
+The peer review system supports compliance requirements:
+
+- **Audit trail**: Complete history of review comments and changes
+- **Timestamp tracking**: When each stage was completed
+- **Reviewer identification**: Who performed quality assurance
+- **Change documentation**: What was modified and why
+
+This is particularly important for:
+- PCI DSS assessments
+- SOC 2 audits
+- ISO 27001 compliance
+- Internal audit requirements
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Assessments" icon="clipboard-list" href="/features/assessments">
+    Learn about assessment workflow and lifecycle
+  </Card>
+  <Card title="Reporting" icon="file-pdf" href="/features/reporting">
+    Generate reports from peer-reviewed assessments
+  </Card>
+  <Card title="Collaboration" icon="people-group" href="/features/collaboration">
+    Multi-user collaboration features
+  </Card>
+  <Card title="Vulnerabilities" icon="bug" href="/features/vulnerabilities">
+    Track and manage findings
+  </Card>
+</CardGroup>

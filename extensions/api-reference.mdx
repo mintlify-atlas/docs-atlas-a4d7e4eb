@@ -1,0 +1,759 @@
+---
+title: API Reference
+description: Complete API documentation for the FactionExtender library
+---
+
+# Extension API Reference
+
+This reference documents all interfaces, classes, and methods available in the FactionExtender library for building Faction extensions.
+
+## Core Interfaces
+
+The FactionExtender library provides five main interfaces that extensions implement to hook into Faction events.
+
+### AssessmentManager
+
+Handle assessment lifecycle events (create, update, complete, delete).
+
+**Package**: `com.faction.extender`
+
+#### Methods
+
+##### assessmentChange()
+
+Called when an assessment changes state.
+
+```java
+AssessmentManagerResult assessmentChange(
+    Assessment assessment,
+    List<Vulnerability> vulnerabilities,
+    Operation operation
+)
+```
+
+**Parameters**:
+- `assessment` (`Assessment`) - The assessment object containing all assessment details
+- `vulnerabilities` (`List<Vulnerability>`) - All vulnerabilities associated with this assessment
+- `operation` (`Operation`) - The type of operation (CREATE, UPDATE, COMPLETE, DELETE)
+
+**Returns**: `AssessmentManagerResult` containing modified assessment and vulnerabilities, or `null` if no changes
+
+**Example**:
+```java
+@Override
+public AssessmentManagerResult assessmentChange(
+        Assessment assessment,
+        List<Vulnerability> vulnerabilities,
+        Operation operation) {
+    
+    if (operation == Operation.COMPLETE) {
+        // Process completed assessment
+        for (Vulnerability vuln : vulnerabilities) {
+            createExternalTicket(vuln);
+        }
+    }
+    
+    return null; // No modifications to assessment data
+}
+```
+
+##### setConfigs()
+
+Called when the extension is loaded to provide configuration parameters.
+
+```java
+void setConfigs(Map<String, String> configs)
+```
+
+**Parameters**:
+- `configs` (`Map<String, String>`) - Configuration key-value pairs from App Store
+
+##### getLogs()
+
+Returns log messages generated during extension execution.
+
+```java
+List<Log> getLogs()
+```
+
+**Returns**: `List<Log>` - Log messages to be displayed in Faction logs
+
+---
+
+### VulnerabilityManager
+
+Process individual vulnerability changes.
+
+**Package**: `com.faction.extender`
+
+#### Methods
+
+##### vulnChange()
+
+Called when a vulnerability is created, updated, or deleted.
+
+```java
+Vulnerability vulnChange(
+    Assessment assessment,
+    Vulnerability vulnerability,
+    Operation operation
+)
+```
+
+**Parameters**:
+- `assessment` (`Assessment`) - The parent assessment
+- `vulnerability` (`Vulnerability`) - The vulnerability being modified
+- `operation` (`Operation`) - The type of operation (CREATE, UPDATE, DELETE)
+
+**Returns**: Modified `Vulnerability` object, or `null` if no changes
+
+**Example**:
+```java
+@Override
+public Vulnerability vulnChange(
+        Assessment assessment,
+        Vulnerability vulnerability,
+        Operation operation) {
+    
+    if (operation == Operation.CREATE) {
+        // Enrich vulnerability with external data
+        vulnerability.setDescription(
+            vulnerability.getDescription() + "\n\n" + getThreatIntel()
+        );
+        return vulnerability; // Return modified vulnerability
+    }
+    
+    return null;
+}
+```
+
+##### setConfigs()
+
+```java
+void setConfigs(Map<String, String> configs)
+```
+
+##### getLogs()
+
+```java
+List<Log> getLogs()
+```
+
+---
+
+### VerificationManager
+
+Handle retest and verification workflows.
+
+**Package**: `com.faction.extender`
+
+#### Methods
+
+##### verificationChange()
+
+Called when a verification/retest event occurs.
+
+```java
+Vulnerability verificationChange(
+    User assessor,
+    Vulnerability vulnerability,
+    Verification verification,
+    Operation operation
+)
+```
+
+**Parameters**:
+- `assessor` (`User`) - The user performing the verification
+- `vulnerability` (`Vulnerability`) - The vulnerability being retested
+- `verification` (`Verification`) - The verification/retest details
+- `operation` (`Operation`) - The type of operation (CREATE, UPDATE, COMPLETE)
+
+**Returns**: Modified `Vulnerability` object, or `null` if no changes
+
+**Example**:
+```java
+@Override
+public Vulnerability verificationChange(
+        User assessor,
+        Vulnerability vulnerability,
+        Verification verification,
+        Operation operation) {
+    
+    if (operation == Operation.COMPLETE) {
+        String status = verification.getStatus();
+        sendNotification(
+            "Retest " + status + " for: " + vulnerability.getTitle()
+        );
+    }
+    
+    return null;
+}
+```
+
+##### setConfigs()
+
+```java
+void setConfigs(Map<String, String> configs)
+```
+
+##### getLogs()
+
+```java
+List<Log> getLogs()
+```
+
+---
+
+### ReportManager
+
+Customize report generation and add dynamic content.
+
+**Package**: `com.faction.extender`
+
+#### Methods
+
+##### reportCreate()
+
+Called during report generation, allowing modification of report text.
+
+```java
+String reportCreate(
+    Assessment assessment,
+    List<Vulnerability> vulnerabilities,
+    String reportText
+)
+```
+
+**Parameters**:
+- `assessment` (`Assessment`) - The assessment being reported
+- `vulnerabilities` (`List<Vulnerability>`) - All vulnerabilities in the report
+- `reportText` (`String`) - Current report text/HTML
+
+**Returns**: Modified report text with custom content, or `null` if no changes
+
+**Example**:
+```java
+@Override
+public String reportCreate(
+        Assessment assessment,
+        List<Vulnerability> vulnerabilities,
+        String reportText) {
+    
+    // Generate severity distribution chart
+    Map<String, Integer> severityCounts = countBySeverity(vulnerabilities);
+    String chartHtml = generateChart(severityCounts);
+    
+    // Replace placeholder with chart
+    return reportText.replace("{{SEVERITY_CHART}}", chartHtml);
+}
+
+private String generateChart(Map<String, Integer> data) {
+    // Generate base64-encoded chart image
+    return "<img src='data:image/png;base64,...' />";
+}
+```
+
+##### setConfigs()
+
+```java
+void setConfigs(Map<String, String> configs)
+```
+
+##### getLogs()
+
+```java
+List<Log> getLogs()
+```
+
+---
+
+### ApplicationInventory
+
+Integrate with external asset/inventory management systems.
+
+**Package**: `com.faction.extender`
+
+#### Methods
+
+##### search()
+
+Called when searching for applications in the inventory.
+
+```java
+InventoryResult[] search(
+    String applicationId,
+    String applicationName
+)
+```
+
+**Parameters**:
+- `applicationId` (`String`) - Application ID to search for (may be null)
+- `applicationName` (`String`) - Application name to search for (may be null)
+
+**Returns**: Array of `InventoryResult` objects matching the search
+
+**Example**:
+```java
+@Override
+public InventoryResult[] search(String appId, String appName) {
+    List<InventoryResult> results = new ArrayList<>();
+    
+    // Query external CMDB
+    String cmdbUrl = config.get("cmdbUrl");
+    JSONArray apps = queryExternalCmdb(cmdbUrl, appId, appName);
+    
+    for (int i = 0; i < apps.length(); i++) {
+        JSONObject app = apps.getJSONObject(i);
+        
+        InventoryResult result = new InventoryResult();
+        result.setApplicationId(app.getString("id"));
+        result.setApplicationName(app.getString("name"));
+        result.setOwner(app.getString("owner"));
+        result.setEnvironment(app.getString("environment"));
+        
+        results.add(result);
+    }
+    
+    return results.toArray(new InventoryResult[0]);
+}
+```
+
+##### setConfigs()
+
+```java
+void setConfigs(Map<String, String> configs)
+```
+
+##### getLogs()
+
+```java
+List<Log> getLogs()
+```
+
+---
+
+## Data Model Classes
+
+The following classes represent Faction's core data structures passed to extensions.
+
+### Assessment
+
+Represents a penetration test or security assessment.
+
+**Package**: `com.faction.elements`
+
+#### Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `id` | `Long` | Unique assessment identifier |
+| `name` | `String` | Assessment name |
+| `summary` | `String` | Executive summary text |
+| `riskAnalysis` | `String` | Risk analysis text |
+| `type` | `String` | Assessment type (e.g., "Web Application", "Network") |
+| `campaign` | `String` | Campaign/project name |
+| `assessors` | `List<User>` | Users assigned to this assessment |
+| `engagementContact` | `User` | Client engagement contact |
+| `remediationContact` | `User` | Client remediation contact |
+| `checklists` | `List<CheckList>` | Assessment checklists |
+| `customFields` | `List<CustomField>` | Custom field values |
+
+#### Methods
+
+```java
+// Getters
+Long getId()
+String getName()
+String getSummary()
+String getRiskAnalysis()
+String getType()
+String getCampaign()
+List<User> getAssessors()
+User getEngagementContact()
+User getRemediationContact()
+List<CheckList> getChecklists()
+List<CustomField> getCustomFields()
+
+// Setters
+void setName(String name)
+void setSummary(String summary)
+void setRiskAnalysis(String riskAnalysis)
+void setType(String type)
+void setCampaign(String campaign)
+void setAssessors(List<User> assessors)
+void setEngagementContact(User contact)
+void setRemediationContact(User contact)
+void setChecklists(List<CheckList> checklists)
+void setCustomFields(List<CustomField> fields)
+```
+
+---
+
+### Vulnerability
+
+Represents a security vulnerability finding.
+
+**Package**: `com.faction.elements`
+
+#### Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `id` | `Long` | Unique vulnerability identifier |
+| `title` | `String` | Vulnerability title |
+| `description` | `String` | Detailed description |
+| `recommendation` | `String` | Remediation recommendation |
+| `details` | `String` | Technical details and evidence |
+| `severity` | `String` | Severity level (Critical, High, Medium, Low) |
+| `cvssScore` | `Double` | CVSS score (if applicable) |
+| `customFields` | `List<CustomField>` | Custom field values |
+
+#### Methods
+
+```java
+// Getters
+Long getId()
+String getTitle()
+String getDescription()
+String getRecommendation()
+String getDetails()
+String getSeverity()
+Double getCvssScore()
+List<CustomField> getCustomFields()
+
+// Setters
+void setTitle(String title)
+void setDescription(String description)
+void setRecommendation(String recommendation)
+void setDetails(String details)
+void setSeverity(String severity)
+void setCvssScore(Double score)
+void setCustomFields(List<CustomField> fields)
+```
+
+---
+
+### User
+
+Represents a Faction user.
+
+**Package**: `com.faction.elements`
+
+#### Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `id` | `Long` | Unique user identifier |
+| `username` | `String` | Username |
+| `firstName` | `String` | First name |
+| `lastName` | `String` | Last name |
+| `email` | `String` | Email address |
+
+---
+
+### Verification
+
+Represents a retest/verification event.
+
+**Package**: `com.faction.elements`
+
+#### Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `id` | `Long` | Unique verification identifier |
+| `status` | `String` | Verification status (Passed, Failed, Partial) |
+| `notes` | `String` | Verification notes |
+| `assessor` | `User` | User who performed the verification |
+
+---
+
+### CustomField
+
+Represents a custom field value.
+
+**Package**: `com.faction.elements`
+
+#### Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `id` | `Long` | Unique field identifier |
+| `type` | `CustomType` | Field type definition |
+| `value` | `String` | Field value |
+
+---
+
+## Result Classes
+
+Classes used to return data from extension methods.
+
+### AssessmentManagerResult
+
+Return value for `AssessmentManager.assessmentChange()`.
+
+**Package**: `com.faction.elements.results`
+
+#### Methods
+
+```java
+// Getters
+Assessment getAssessment()
+List<Vulnerability> getVulnerabilities()
+
+// Setters
+void setAssessment(Assessment assessment)
+void setVulnerabilities(List<Vulnerability> vulnerabilities)
+```
+
+**Example**:
+```java
+AssessmentManagerResult result = new AssessmentManagerResult();
+result.setAssessment(modifiedAssessment);
+result.setVulnerabilities(modifiedVulns);
+return result;
+```
+
+---
+
+### InventoryResult
+
+Return value for `ApplicationInventory.search()`.
+
+**Package**: `com.faction.elements.results`
+
+#### Methods
+
+```java
+// Setters
+void setApplicationId(String id)
+void setApplicationName(String name)
+void setOwner(String owner)
+void setEnvironment(String environment)
+void setUrl(String url)
+void setDescription(String description)
+```
+
+---
+
+## Enumerations
+
+### Operation
+
+Defines the type of operation being performed.
+
+**Package**: `com.faction.extender`
+
+#### Values
+
+| Value | Description |
+|-------|-------------|
+| `CREATE` | New entity created |
+| `UPDATE` | Existing entity updated |
+| `COMPLETE` | Entity marked as complete |
+| `DELETE` | Entity deleted |
+
+**Usage**:
+```java
+if (operation == AssessmentManager.Operation.COMPLETE) {
+    // Handle completion
+}
+```
+
+---
+
+### EventType
+
+Defines the type of event being processed.
+
+**Package**: `com.fuse.extenderapi.Extensions`
+
+#### Values
+
+| Value | Description | Interface |
+|-------|-------------|----------|
+| `INVENTORY` | Application inventory events | `ApplicationInventory` |
+| `ASMT_MANAGER` | Assessment events | `AssessmentManager` |
+| `VULN_MANAGER` | Vulnerability events | `VulnerabilityManager` |
+| `VER_MANAGER` | Verification events | `VerificationManager` |
+| `REPORT_MANAGER` | Report generation events | `ReportManager` |
+
+---
+
+## Logging
+
+### Log
+
+Represents a log message generated by an extension.
+
+**Package**: `com.faction.elements.utils`
+
+#### Constructor
+
+```java
+Log(String message)
+```
+
+**Usage**:
+```java
+import com.faction.elements.utils.Log;
+
+private List<Log> logs = new ArrayList<>();
+
+logs.add(new Log("Processing started"));
+logs.add(new Log("ERROR: Connection failed"));
+logs.add(new Log("Processing completed successfully"));
+```
+
+---
+
+## Complete Extension Example
+
+Here's a complete, production-ready extension implementing multiple interfaces:
+
+```java
+package com.example.faction.extension;
+
+import com.faction.extender.AssessmentManager;
+import com.faction.extender.VulnerabilityManager;
+import com.faction.elements.Assessment;
+import com.faction.elements.Vulnerability;
+import com.faction.elements.results.AssessmentManagerResult;
+import com.faction.elements.utils.Log;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.net.URI;
+
+public class JiraExtension implements AssessmentManager, VulnerabilityManager {
+    
+    private Map<String, String> config;
+    private List<Log> logs = new ArrayList<>();
+    private HttpClient httpClient = HttpClient.newHttpClient();
+    
+    @Override
+    public void setConfigs(Map<String, String> configs) {
+        this.config = configs;
+        
+        // Validate required configuration
+        if (!config.containsKey("jiraUrl")) {
+            logs.add(new Log("ERROR: jiraUrl is required"));
+        }
+        if (!config.containsKey("apiToken")) {
+            logs.add(new Log("ERROR: apiToken is required"));
+        }
+    }
+    
+    @Override
+    public AssessmentManagerResult assessmentChange(
+            Assessment assessment,
+            List<Vulnerability> vulnerabilities,
+            Operation operation) {
+        
+        logs.add(new Log("Assessment event: " + operation + " for " + assessment.getName()));
+        
+        if (operation == Operation.COMPLETE) {
+            logs.add(new Log("Creating Jira tickets for " + vulnerabilities.size() + " vulnerabilities"));
+            
+            for (Vulnerability vuln : vulnerabilities) {
+                try {
+                    createJiraIssue(assessment, vuln);
+                    logs.add(new Log("Created Jira ticket for: " + vuln.getTitle()));
+                } catch (Exception e) {
+                    logs.add(new Log("ERROR creating Jira ticket: " + e.getMessage()));
+                }
+            }
+        }
+        
+        return null;
+    }
+    
+    @Override
+    public Vulnerability vulnChange(
+            Assessment assessment,
+            Vulnerability vulnerability,
+            Operation operation) {
+        
+        logs.add(new Log("Vulnerability event: " + operation + " for " + vulnerability.getTitle()));
+        
+        // Could update existing Jira tickets here
+        
+        return null;
+    }
+    
+    private void createJiraIssue(Assessment assessment, Vulnerability vuln) throws Exception {
+        String jiraUrl = config.get("jiraUrl");
+        String apiToken = config.get("apiToken");
+        String projectKey = config.get("projectKey");
+        
+        // Build Jira issue JSON
+        String json = String.format(
+            "{\"fields\":{\"project\":{\"key\":\"%s\"}," +
+            "\"summary\":\"%s\"," +
+            "\"description\":\"%s\"," +
+            "\"issuetype\":{\"name\":\"Bug\"}}}",
+            projectKey,
+            escapeJson(vuln.getTitle()),
+            escapeJson(vuln.getDescription())
+        );
+        
+        HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create(jiraUrl + "/rest/api/2/issue"))
+            .header("Authorization", "Bearer " + apiToken)
+            .header("Content-Type", "application/json")
+            .POST(HttpRequest.BodyPublishers.ofString(json))
+            .build();
+        
+        HttpResponse<String> response = httpClient.send(
+            request,
+            HttpResponse.BodyHandlers.ofString()
+        );
+        
+        if (response.statusCode() != 201) {
+            throw new Exception("Jira API error: " + response.body());
+        }
+    }
+    
+    private String escapeJson(String text) {
+        if (text == null) return "";
+        return text.replace("\\", "\\\\")
+                   .replace("\"", "\\\"")
+                   .replace("\n", "\\n");
+    }
+    
+    @Override
+    public List<Log> getLogs() {
+        return logs;
+    }
+}
+```
+
+**Service Provider Configuration**:
+
+```
+# File: src/main/resources/META-INF/services/com.faction.extender.AssessmentManager
+com.example.faction.extension.JiraExtension
+```
+
+```
+# File: src/main/resources/META-INF/services/com.faction.extender.VulnerabilityManager
+com.example.faction.extension.JiraExtension
+```
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Extension Development" icon="code" href="/extensions/development">
+    Learn how to build extensions
+  </Card>
+  <Card title="App Store" icon="store" href="/extensions/app-store">
+    Install and manage extensions
+  </Card>
+</CardGroup>

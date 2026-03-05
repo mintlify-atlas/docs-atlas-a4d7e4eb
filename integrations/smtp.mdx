@@ -1,0 +1,470 @@
+---
+title: 'SMTP Email Notifications'
+description: 'Configure email notifications for assessments, findings, and team updates'
+---
+
+## Overview
+
+Faction provides comprehensive email notification capabilities through SMTP integration. The system sends automated emails for user registration, assessment updates, finding assignments, peer reviews, and verification requests.
+
+## Configuration
+
+### SMTP Server Settings
+
+Configure SMTP in Faction's system settings:
+
+<CodeGroup>
+```yaml SMTP Configuration
+server: smtp.example.com
+port: 587
+type: smtp
+fromAddress: faction@example.com
+uname: smtp-username
+password: encrypted-password
+emailAuth: true
+tls: true
+emailSSL: false
+```
+</CodeGroup>
+
+### Configuration Parameters
+
+| Parameter | Description | Example |
+|-----------|-------------|----------|
+| `server` | SMTP server hostname | `smtp.gmail.com`, `smtp.office365.com` |
+| `port` | SMTP server port | `587` (TLS), `465` (SSL), `25` (Plain) |
+| `type` | Mail protocol type | `smtp` |
+| `fromAddress` | Sender email address | `noreply@faction.company.com` |
+| `uname` | SMTP authentication username | Usually your email address |
+| `password` | SMTP authentication password | Encrypted automatically |
+| `emailAuth` | Enable SMTP authentication | `true` or `false` |
+| `tls` | Enable STARTTLS | `true` or `false` |
+| `emailSSL` | Enable SSL/TLS | `true` or `false` |
+
+### Environment Variables
+
+Faction can auto-configure SMTP settings from environment variables:
+
+```bash
+FACTION_SMTP_SERVER=smtp.example.com
+FACTION_SMTP_PORT=587
+FACTION_SMTP_USER=your-email@example.com
+FACTION_SMTP_FROM_ADDRESS=faction@example.com
+FACTION_SMTP_PASSWORD=your-smtp-password
+```
+
+If no SMTP configuration exists in the database, Faction automatically initializes settings from these environment variables with the following defaults:
+- TLS: Enabled
+- SSL: Disabled
+- Authentication: Enabled
+- Type: `smtp`
+
+Relevant source code: `src/com/fuse/dao/SystemSettings.java:112-124`
+
+## Provider-Specific Configuration
+
+### Gmail / Google Workspace
+
+<CodeGroup>
+```yaml Gmail Configuration
+server: smtp.gmail.com
+port: 587
+fromAddress: your-email@gmail.com
+uname: your-email@gmail.com
+password: app-specific-password
+emailAuth: true
+tls: true
+emailSSL: false
+```
+</CodeGroup>
+
+<Warning>
+Gmail requires an [App Password](https://support.google.com/accounts/answer/185833) instead of your regular password when 2FA is enabled.
+</Warning>
+
+### Microsoft 365 / Outlook
+
+<CodeGroup>
+```yaml Microsoft 365
+server: smtp.office365.com
+port: 587
+fromAddress: your-email@company.com
+uname: your-email@company.com
+password: your-password
+emailAuth: true
+tls: true
+emailSSL: false
+```
+</CodeGroup>
+
+### Amazon SES
+
+<CodeGroup>
+```yaml Amazon SES
+server: email-smtp.us-east-1.amazonaws.com
+port: 587
+fromAddress: verified-email@example.com
+uname: AWS-SMTP-USERNAME
+password: AWS-SMTP-PASSWORD
+emailAuth: true
+tls: true
+emailSSL: false
+```
+</CodeGroup>
+
+<Info>
+Amazon SES requires verifying your sender email address or domain before sending emails.
+</Info>
+
+### SendGrid
+
+<CodeGroup>
+```yaml SendGrid
+server: smtp.sendgrid.net
+port: 587
+fromAddress: verified-sender@example.com
+uname: apikey
+password: your-sendgrid-api-key
+emailAuth: true
+tls: true
+emailSSL: false
+```
+</CodeGroup>
+
+<Note>
+SendGrid uses "apikey" as the username and your SendGrid API key as the password.
+</Note>
+
+### Custom SMTP Server
+
+<CodeGroup>
+```yaml Custom SMTP
+server: mail.company.com
+port: 25
+fromAddress: faction@company.com
+uname: ""
+password: ""
+emailAuth: false
+tls: false
+emailSSL: false
+```
+</CodeGroup>
+
+## Email Customization
+
+### Email Prefix and Signature
+
+Customize email subject prefixes and signatures:
+
+<CodeGroup>
+```yaml Customization
+prefix: "[Faction Security]"
+signature: "Thanks,\nThe Faction Security Team\nhttps://faction.company.com"
+```
+</CodeGroup>
+
+- **Prefix**: Prepended to all email subjects (e.g., "[Faction Security] New Finding Assigned")
+- **Signature**: Appended to all email bodies (HTML format supported)
+
+Default values:
+- Prefix: `"Faction: "`
+- Signature: `"Thanks,<br>FACTION"`
+
+## Notification Types
+
+Faction sends email notifications for the following events:
+
+### Assessment Notifications
+
+<AccordionGroup>
+  <Accordion title="New Assessment Created">
+    Sent to assigned assessors and remediation contacts when a new assessment is created.
+    
+    **Recipients**:
+    - All assigned assessors
+    - Remediation contact
+    - Distribution list members
+  </Accordion>
+
+  <Accordion title="Assessment Updated">
+    Sent when assessment details or status changes.
+    
+    **Recipients**:
+    - Assigned assessors
+    - Remediation contact
+    - Distribution list members
+  </Accordion>
+
+  <Accordion title="Finding Assigned">
+    Sent when a new finding is created or assigned.
+    
+    **Recipients**:
+    - Assigned assessors
+    - Remediation contact
+  </Accordion>
+</AccordionGroup>
+
+### Verification Notifications
+
+<AccordionGroup>
+  <Accordion title="Verification Requested">
+    Sent when a finding is marked for verification.
+    
+    **Recipients**:
+    - Original assessor
+    - Assigned remediation contact
+    - Assessment distribution list
+  </Accordion>
+
+  <Accordion title="Verification Completed">
+    Sent when verification is completed (passed or failed).
+    
+    **Recipients**:
+    - Original assessor
+    - Remediation contact
+  </Accordion>
+</AccordionGroup>
+
+### Peer Review Notifications
+
+<AccordionGroup>
+  <Accordion title="Peer Review Requested">
+    Sent when an assessment is submitted for peer review.
+    
+    **Recipients**:
+    - All assessors assigned to the parent assessment
+  </Accordion>
+
+  <Accordion title="Peer Review Completed">
+    Sent when peer review is completed.
+    
+    **Recipients**:
+    - Original assessors
+  </Accordion>
+</AccordionGroup>
+
+### User Registration
+
+<AccordionGroup>
+  <Accordion title="Welcome Email">
+    Sent to new users when their account is created.
+    
+    **Contents**:
+    - Welcome message
+    - Login instructions
+    - Platform URL
+  </Accordion>
+
+  <Accordion title="Password Reset">
+    Sent when a user requests a password reset.
+    
+    **Contents**:
+    - Password reset link
+    - Expiration time
+  </Accordion>
+</AccordionGroup>
+
+## Distribution Lists
+
+Each assessment can have a distribution list for additional email recipients:
+
+```text
+email1@example.com;email2@example.com;email3@example.com
+```
+
+- Separate multiple emails with semicolons (`;`)
+- Distribution list recipients receive all assessment-related notifications
+- Configured per-assessment in assessment settings
+
+## Calendar Invites
+
+Faction can send calendar invites (.ics files) for assessment-related meetings:
+
+```java
+public void sendCalendarInviteInline(String toEmail, String subject, String icsContent)
+```
+
+Calendar invites are sent as multipart MIME messages with:
+- Plain text alternative
+- HTML body
+- iCalendar attachment
+- Outlook-specific headers for compatibility
+
+Relevant source code: `src/com/fuse/utils/SendEmail.java:229-310`
+
+## Email Templates
+
+### HTML Email Support
+
+Faction sends HTML-formatted emails with support for:
+
+- Rich text formatting
+- Inline images (base64 encoded)
+- Custom signatures
+- Email prefixes
+
+### Image Embedding
+
+Inline images in email content are automatically:
+1. Extracted from HTML content
+2. Decoded from base64
+3. Attached as MIME parts
+4. Referenced in the email body
+
+Relevant source code: `src/com/fuse/utils/SendEmail.java:177-210`
+
+## Testing Email Configuration
+
+### Connection Test
+
+1. Navigate to **Settings** > **Email Configuration**
+
+2. Enter your SMTP settings
+
+3. Click **Test Connection** to verify:
+   - SMTP server connectivity
+   - Authentication credentials
+   - TLS/SSL configuration
+
+4. A test email will be sent to your configured `fromAddress`
+
+### Send Test Email
+
+To verify end-to-end email delivery:
+
+1. In email settings, use the **Send Test Email** feature
+
+2. Enter a recipient email address
+
+3. Click **Send Test**
+
+4. Check the recipient inbox for the test message
+
+## Implementation Details
+
+### JavaMail Configuration
+
+Faction uses JavaMail with the following properties:
+
+```java
+mailServerProperties.put("mail.smtp.port", port);
+mailServerProperties.put("mail.smtp.host", server);
+mailServerProperties.put("mail.smtp.auth", emailAuth);
+mailServerProperties.put("mail.smtp.starttls.enable", tls);
+mailServerProperties.setProperty("mail.smtp.ssl.protocols", "TLSv1.2");
+```
+
+### SSL/TLS Configuration
+
+**For SSL (port 465)**:
+```java
+mailServerProperties.put("mail.smtp.socketFactory.class", "javax.net.ssl.SSLSocketFactory");
+mailServerProperties.put("mail.smtp.ssl.socketFactory.port", port);
+mailServerProperties.put("mail.smtp.socketFactory.fallback", "false");
+```
+
+**For STARTTLS (port 587)**:
+```java
+mailServerProperties.put("mail.smtp.starttls.enable", "true");
+mailServerProperties.setProperty("mail.smtp.ssl.protocols", "TLSv1.2");
+```
+
+Relevant source code: `src/com/fuse/utils/SendEmail.java:140-166`
+
+### Password Encryption
+
+SMTP passwords are encrypted before storage using Faction's encryption utilities:
+
+```java
+String encryptedPassword = FSUtils.encryptPassword(plainPassword);
+String decryptedPassword = FSUtils.decryptPassword(encryptedPassword);
+```
+
+### Dependencies
+
+Faction includes the JavaMail dependency in `pom.xml`:
+
+```xml
+<dependency>
+    <groupId>com.sun.mail</groupId>
+    <artifactId>javax.mail</artifactId>
+    <version>1.5.5</version>
+</dependency>
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Authentication Failed">
+    - Verify username and password are correct
+    - Check if your email provider requires an app-specific password
+    - Ensure "less secure app access" is enabled (for Gmail legacy accounts)
+    - Verify the account isn't locked or suspended
+  </Accordion>
+
+  <Accordion title="Connection Timeout">
+    - Verify the SMTP server hostname and port
+    - Check firewall rules allow outbound SMTP traffic
+    - Test connectivity: `telnet smtp.example.com 587`
+    - Ensure the SMTP server is running and accessible
+  </Accordion>
+
+  <Accordion title="TLS/SSL Errors">
+    - For port 587, use TLS (STARTTLS)
+    - For port 465, use SSL
+    - Ensure `emailSSL` and `tls` settings match your port
+    - Check that TLSv1.2 is supported by your SMTP server
+  </Accordion>
+
+  <Accordion title="Emails Not Received">
+    - Check recipient spam/junk folders
+    - Verify the sender email is not blacklisted
+    - Check email server logs for delivery errors
+    - Ensure SPF/DKIM records are configured for your domain
+    - Verify the `fromAddress` is allowed to send from your SMTP server
+  </Accordion>
+
+  <Accordion title="HTML Formatting Issues">
+    - Check email content for malformed HTML
+    - Test with plain text first, then add HTML formatting
+    - Verify images are properly base64 encoded
+    - Some email clients may strip certain HTML elements
+  </Accordion>
+</AccordionGroup>
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Use Dedicated SMTP Account" icon="envelope">
+    Create a dedicated email account for Faction notifications to improve deliverability and tracking.
+  </Card>
+
+  <Card title="Configure SPF and DKIM" icon="shield-check">
+    Set up SPF and DKIM records for your domain to prevent emails from being marked as spam.
+  </Card>
+
+  <Card title="Use TLS Encryption" icon="lock">
+    Always use TLS or SSL for SMTP connections to protect credentials and email content.
+  </Card>
+
+  <Card title="Monitor Email Delivery" icon="chart-line">
+    Regularly check email delivery success rates and investigate failures promptly.
+  </Card>
+
+  <Card title="Customize Email Templates" icon="paintbrush">
+    Update email prefix and signature to match your organization's branding.
+  </Card>
+
+  <Card title="Test Before Production" icon="flask">
+    Always test email configuration with test addresses before deploying to production.
+  </Card>
+</CardGroup>
+
+## Security Considerations
+
+- SMTP passwords are encrypted at rest using Faction's encryption utilities
+- Always use authenticated SMTP to prevent relay abuse
+- Use TLS/SSL to encrypt email transmission
+- Restrict SMTP credentials to Faction's application account
+- Regularly rotate SMTP passwords
+- Monitor email logs for suspicious activity

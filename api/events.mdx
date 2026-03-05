@@ -1,0 +1,488 @@
+---
+title: "Events API"
+description: "Real-time server-sent events for collaborative assessment updates"
+---
+
+## Overview
+
+The Events API provides real-time server-sent events (SSE) for broadcasting updates to connected clients. This enables collaborative features where multiple users can work on the same assessment and see real-time updates from other team members.
+
+The Events API consists of two parts:
+1. **Event Stream**: Handled by `EventStreamServlet` at `/service/events/stream` (SSE connection)
+2. **Event Triggers**: REST endpoints for triggering events and checking status
+
+All endpoints require an authenticated session.
+
+---
+
+## Event Stream Connection
+
+<RequestExample>
+```javascript GET /service/events/stream
+// Connect to server-sent events stream
+const eventSource = new EventSource('/service/events/stream');
+
+eventSource.addEventListener('message', (event) => {
+  const data = JSON.parse(event.data);
+  console.log('Event received:', data);
+  // Handle the event update
+  updateUI(data);
+});
+
+eventSource.addEventListener('error', (error) => {
+  console.error('SSE connection error:', error);
+});
+```
+</RequestExample>
+
+Establishes a persistent server-sent events connection to receive real-time updates.
+
+### Connection Details
+
+<ParamField query="asmtId" type="string">
+  Optional: Assessment ID to filter events for a specific assessment
+</ParamField>
+
+### Authentication
+
+Requires an authenticated HTTP session (session cookie).
+
+### Event Format
+
+Events are sent in SSE format:
+
+```
+event: message
+data: {"userId":123,"firstName":"John","lastName":"Doe","message":{...},"timestamp":1234567890}
+```
+
+### Event Data Structure
+
+<ResponseField name="userId" type="long">
+  ID of the user who triggered the event
+</ResponseField>
+
+<ResponseField name="firstName" type="string">
+  First name of the user
+</ResponseField>
+
+<ResponseField name="lastName" type="string">
+  Last name of the user
+</ResponseField>
+
+<ResponseField name="message" type="object">
+  Event payload (structure varies by event type)
+</ResponseField>
+
+<ResponseField name="timestamp" type="long">
+  Unix timestamp (milliseconds) when the event was created
+</ResponseField>
+
+---
+
+## Trigger Event
+
+<RequestExample>
+```bash POST /api/events/trigger
+curl -X POST "https://your-faction-instance.com/api/events/trigger" \
+  -H "Content-Type: application/json" \
+  -H "Cookie: JSESSIONID=your-session-id" \
+  -d '{
+    "message": {
+      "type": "vulnerability_added",
+      "vulnerabilityId": 789,
+      "assessmentId": 123,
+      "text": "New XSS vulnerability added"
+    }
+  }'
+```
+</RequestExample>
+
+Triggers an event to be broadcast to all connected clients viewing the same assessment.
+
+### Authentication
+
+Requires an authenticated HTTP session.
+
+### Request Body
+
+<ParamField body="message" type="object" required>
+  Event message payload. Can be a simple string or a structured object.
+</ParamField>
+
+### Simple String Message
+
+```json
+{
+  "message": "Assessment updated"
+}
+```
+
+### Structured Message
+
+```json
+{
+  "message": {
+    "type": "vulnerability_updated",
+    "vulnerabilityId": 789,
+    "assessmentId": 123,
+    "field": "severity",
+    "oldValue": 5,
+    "newValue": 7,
+    "text": "Severity increased to High",
+    "priority": "high"
+  }
+}
+```
+
+### Response
+
+<ResponseField name="messageSent" type="object">
+  The enriched message that was broadcast (includes user information)
+</ResponseField>
+
+<ResponseField name="clientsSent" type="integer">
+  Number of connected clients that received the event
+</ResponseField>
+
+### Broadcast Behavior
+
+Events are broadcast to:
+- All clients connected to the same assessment (matching `asmtId`)
+- **Excluding** the client that triggered the event (to prevent duplicate updates)
+
+The broadcast uses the session's `asmtId` attribute to filter recipients.
+
+### Status Codes
+
+- `200` - Success: Event broadcast to connected clients
+- `400` - Message is required
+- `401` - Authentication required
+- `500` - Failed to serialize message
+
+---
+
+## Get Status
+
+<RequestExample>
+```bash GET /api/events/status
+curl -X GET "https://your-faction-instance.com/api/events/status" \
+  -H "Cookie: JSESSIONID=your-session-id"
+```
+</RequestExample>
+
+Retrieves the current status of the event broadcasting system, including the number of connected clients.
+
+### Authentication
+
+Requires an authenticated HTTP session.
+
+### Response
+
+<ResponseField name="connectedClients" type="integer">
+  Number of currently connected SSE clients
+</ResponseField>
+
+<ResponseField name="totalEvents" type="integer">
+  Total number of events broadcast since server start
+</ResponseField>
+
+### Example Response
+
+```json
+{
+  "connectedClients": 5,
+  "totalEvents": 142
+}
+```
+
+### Status Codes
+
+- `200` - Success: Status returned
+- `401` - Authentication required
+
+---
+
+## Event Types
+
+While the API accepts any message structure, common event types used in Faction include:
+
+### Vulnerability Events
+
+**Vulnerability Added**
+```json
+{
+  "type": "vulnerability_added",
+  "vulnerabilityId": 789,
+  "assessmentId": 123,
+  "name": "SQL Injection"
+}
+```
+
+**Vulnerability Updated**
+```json
+{
+  "type": "vulnerability_updated",
+  "vulnerabilityId": 789,
+  "field": "severity",
+  "value": 7
+}
+```
+
+**Vulnerability Deleted**
+```json
+{
+  "type": "vulnerability_deleted",
+  "vulnerabilityId": 789
+}
+```
+
+### Assessment Events
+
+**Assessment Updated**
+```json
+{
+  "type": "assessment_updated",
+  "assessmentId": 123,
+  "field": "notes",
+  "user": "John Doe"
+}
+```
+
+**User Joined**
+```json
+{
+  "type": "user_joined",
+  "assessmentId": 123
+}
+```
+
+**User Left**
+```json
+{
+  "type": "user_left",
+  "assessmentId": 123
+}
+```
+
+---
+
+## Client Implementation
+
+### JavaScript/Browser
+
+```javascript
+class FactionEventsClient {
+  constructor(assessmentId) {
+    this.assessmentId = assessmentId;
+    this.eventSource = null;
+    this.reconnectDelay = 1000;
+  }
+
+  connect() {
+    // Set assessment ID in session before connecting
+    fetch('/api/assessments/' + this.assessmentId)
+      .then(() => {
+        this.eventSource = new EventSource('/service/events/stream');
+        
+        this.eventSource.addEventListener('message', (event) => {
+          const data = JSON.parse(event.data);
+          this.handleEvent(data);
+        });
+
+        this.eventSource.addEventListener('error', (error) => {
+          console.error('SSE Error:', error);
+          this.reconnect();
+        });
+      });
+  }
+
+  handleEvent(data) {
+    const { userId, firstName, lastName, message, timestamp } = data;
+    
+    switch(message.type) {
+      case 'vulnerability_added':
+        this.onVulnerabilityAdded(message);
+        break;
+      case 'vulnerability_updated':
+        this.onVulnerabilityUpdated(message);
+        break;
+      case 'assessment_updated':
+        this.onAssessmentUpdated(message);
+        break;
+      default:
+        console.log('Unknown event type:', message.type);
+    }
+  }
+
+  sendEvent(messageData) {
+    return fetch('/api/events/trigger', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: messageData })
+    });
+  }
+
+  reconnect() {
+    setTimeout(() => {
+      this.connect();
+    }, this.reconnectDelay);
+  }
+
+  disconnect() {
+    if (this.eventSource) {
+      this.eventSource.close();
+    }
+  }
+}
+
+// Usage
+const eventsClient = new FactionEventsClient(123);
+eventsClient.connect();
+
+// Trigger an event
+eventsClient.sendEvent({
+  type: 'vulnerability_updated',
+  vulnerabilityId: 789,
+  field: 'severity',
+  value: 7
+});
+```
+
+### React Hook
+
+```javascript
+import { useEffect, useRef } from 'react';
+
+function useEvents(assessmentId, onEvent) {
+  const eventSourceRef = useRef(null);
+
+  useEffect(() => {
+    // Connect to SSE
+    eventSourceRef.current = new EventSource('/service/events/stream');
+    
+    eventSourceRef.current.addEventListener('message', (event) => {
+      const data = JSON.parse(event.data);
+      onEvent(data);
+    });
+
+    // Cleanup on unmount
+    return () => {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+      }
+    };
+  }, [assessmentId, onEvent]);
+
+  const sendEvent = (message) => {
+    return fetch('/api/events/trigger', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message })
+    });
+  };
+
+  return { sendEvent };
+}
+
+// Usage in component
+function AssessmentView({ assessmentId }) {
+  const { sendEvent } = useEvents(assessmentId, (data) => {
+    console.log('Event received:', data);
+    // Update UI based on event
+  });
+
+  const handleUpdate = () => {
+    sendEvent({
+      type: 'assessment_updated',
+      assessmentId,
+      field: 'notes'
+    });
+  };
+
+  return <div>...</div>;
+}
+```
+
+---
+
+## Architecture
+
+### Event Flow
+
+<Steps>
+  <Step title="Client Connects">
+    Client establishes SSE connection to `/service/events/stream`
+  </Step>
+  
+  <Step title="Session Tracking">
+    Server tracks the connection with session ID and assessment ID
+  </Step>
+  
+  <Step title="Event Triggered">
+    User action triggers event via POST to `/api/events/trigger`
+  </Step>
+  
+  <Step title="Event Enriched">
+    Server enriches event with user information from session
+  </Step>
+  
+  <Step title="Broadcast">
+    Event broadcast to all clients viewing same assessment (excluding sender)
+  </Step>
+  
+  <Step title="Client Receives">
+    Connected clients receive and process the event
+  </Step>
+</Steps>
+
+### Session Management
+
+- Events are scoped by `asmtId` stored in the HTTP session
+- Each SSE connection is associated with a session ID
+- Events are only sent to clients with matching assessment IDs
+- The triggering client is excluded from receiving its own events
+
+---
+
+## Best Practices
+
+### Connection Management
+
+- Implement automatic reconnection logic for dropped connections
+- Use exponential backoff for reconnection attempts
+- Close connections when leaving the assessment view
+
+### Event Design
+
+- Use structured message objects with consistent `type` fields
+- Include enough context in events to update UI without additional API calls
+- Keep event payloads small and focused
+
+### Error Handling
+
+- Handle SSE connection errors gracefully
+- Implement fallback polling if SSE is not supported
+- Log events for debugging but avoid exposing sensitive data
+
+### Performance
+
+- Throttle high-frequency events (e.g., typing indicators)
+- Batch related updates when possible
+- Consider using message priority for critical updates
+
+---
+
+## Limitations
+
+- **Browser Support**: Server-sent events are supported in all modern browsers
+- **One-Way Communication**: SSE is server-to-client only (use POST for client-to-server)
+- **Connection Limits**: Browsers typically limit 6 concurrent SSE connections per domain
+- **Authentication**: Requires session-based authentication (cannot use API keys)
+
+## Security Considerations
+
+- Events are only broadcast to authenticated users
+- Assessment ID filtering prevents cross-assessment data leakage
+- Sender is excluded from receiving their own events
+- All event data should be sanitized before display in UI

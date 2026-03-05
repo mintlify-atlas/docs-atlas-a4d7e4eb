@@ -1,0 +1,748 @@
+---
+title: "Vulnerabilities API"
+description: "Manage vulnerability templates, vulnerability data, categories, and tracking"
+---
+
+## Overview
+
+The Vulnerabilities API provides endpoints for managing vulnerability templates (default vulnerabilities), individual vulnerabilities, categories, and tracking information. This includes creating and updating vulnerability templates, searching vulnerabilities, managing remediation status, and organizing vulnerabilities by category.
+
+All endpoints require authentication via the `FACTION-API-KEY` header.
+
+---
+
+## Get All Default Vulnerabilities (JSON)
+
+<RequestExample>
+```bash GET /api/vulnerabilities/default
+curl -X GET "https://your-faction-instance.com/api/vulnerabilities/default" \
+  -H "FACTION-API-KEY: your-api-key"
+```
+</RequestExample>
+
+Retrieves all default vulnerability templates stored in the system in JSON format with custom fields support.
+
+### Authentication
+
+<ParamField header="FACTION-API-KEY" type="string" required>
+  API authentication key
+</ParamField>
+
+### Response
+
+Returns an array of `DefaultVulnerabilityDTO` objects.
+
+<ResponseField name="id" type="long">
+  Template ID
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Vulnerability name
+</ResponseField>
+
+<ResponseField name="categoryId" type="long">
+  Category ID
+</ResponseField>
+
+<ResponseField name="categoryName" type="string">
+  Category name
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  Vulnerability description (HTML/Markdown)
+</ResponseField>
+
+<ResponseField name="recommendation" type="string">
+  Remediation recommendation (HTML/Markdown)
+</ResponseField>
+
+<ResponseField name="severityId" type="integer">
+  Severity level (0-9)
+</ResponseField>
+
+<ResponseField name="impactId" type="integer">
+  Impact score (0-9)
+</ResponseField>
+
+<ResponseField name="likelihoodId" type="integer">
+  Likelihood score (0-9)
+</ResponseField>
+
+<ResponseField name="active" type="boolean">
+  Whether template is active
+</ResponseField>
+
+<ResponseField name="cvss31Score" type="string">
+  CVSS 3.1 score
+</ResponseField>
+
+<ResponseField name="cvss31String" type="string">
+  CVSS 3.1 vector string
+</ResponseField>
+
+<ResponseField name="cvss40Score" type="string">
+  CVSS 4.0 score
+</ResponseField>
+
+<ResponseField name="cvss40String" type="string">
+  CVSS 4.0 vector string
+</ResponseField>
+
+<ResponseField name="customFields" type="array">
+  Array of custom field objects
+</ResponseField>
+
+### Status Codes
+
+- `200` - Success: All default vulnerabilities returned
+- `401` - Not authorized
+- `400` - Unknown error
+
+---
+
+## Get All Default Vulnerabilities (CSV)
+
+<RequestExample>
+```bash GET /api/vulnerabilities/csv/default
+curl -X GET "https://your-faction-instance.com/api/vulnerabilities/csv/default" \
+  -H "FACTION-API-KEY: your-api-key" \
+  -H "Accept: text/csv"
+```
+</RequestExample>
+
+Retrieves all default vulnerability templates in CSV format.
+
+### Authentication
+
+<ParamField header="FACTION-API-KEY" type="string" required>
+  API authentication key
+</ParamField>
+
+### Response
+
+Returns CSV data with the following columns:
+
+- Id
+- Name
+- CategoryId
+- CategoryName
+- Description
+- Recommendation
+- SeverityId
+- ImpactId
+- LikelihoodId
+- isActive
+- CVSS31Score
+- CVSS31String
+- CVSS40Score
+- CVSS40String
+- CustomFields (JSON)
+
+### Status Codes
+
+- `200` - Success: CSV data returned
+- `401` - Not authorized
+- `400` - Unknown error
+
+---
+
+## Upload Default Vulnerabilities (CSV)
+
+<RequestExample>
+```bash POST /api/vulnerabilities/csv/default
+curl -X POST "https://your-faction-instance.com/api/vulnerabilities/csv/default" \
+  -H "FACTION-API-KEY: your-api-key" \
+  -H "Content-Type: text/plain" \
+  --data-binary @vulnerabilities.csv
+```
+</RequestExample>
+
+Uploads default vulnerability templates to Faction in CSV format.
+
+### Authentication
+
+<ParamField header="FACTION-API-KEY" type="string" required>
+  API authentication key
+</ParamField>
+
+### Request Body
+
+CSV file with the following format:
+
+```csv
+id,vulnName,categoryId,categoryName,description,recommendation,severityId,impactId,likelihoodId,active,cvss31Score,cvss31String,cvss40Score,cvss40String
+,SQL Injection,,Injection,SQL injection vulnerability description,Parameterized queries recommended,7,8,6,true,7.5,CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H,,
+```
+
+### CSV Format Notes
+
+- **id**: If empty, creates a new vulnerability. If populated, updates existing vulnerability.
+- **categoryId/categoryName**: If categoryId is missing, categoryName is required. If category doesn't exist, a new one is created.
+- **categoryId**: If populated, categoryName is ignored.
+
+### Status Codes
+
+- `200` - Success: Vulnerabilities uploaded
+- `401` - Not authorized
+- `400` - Invalid CSV format or data
+
+---
+
+## Upload Default Vulnerabilities (JSON)
+
+<RequestExample>
+```bash POST /api/vulnerabilities/default
+curl -X POST "https://your-faction-instance.com/api/vulnerabilities/default" \
+  -H "FACTION-API-KEY: your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '[
+    {
+      "name": "SQL Injection",
+      "categoryName": "Injection",
+      "description": "SQL injection allows attackers to interfere with database queries",
+      "recommendation": "Use parameterized queries and input validation",
+      "severityId": 7,
+      "impactId": 8,
+      "likelihoodId": 6,
+      "active": true,
+      "cvss31Score": "7.5",
+      "cvss31String": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+      "customFields": [
+        {"key": "OWASP_Category", "value": "A03:2021"},
+        {"key": "CWE_ID", "value": "CWE-89"}
+      ]
+    }
+  ]'
+```
+</RequestExample>
+
+Uploads default vulnerability templates in JSON format with custom fields support.
+
+### Authentication
+
+<ParamField header="FACTION-API-KEY" type="string" required>
+  API authentication key
+</ParamField>
+
+### Request Body
+
+Array of `DefaultVulnerabilityDTO` objects:
+
+<ParamField body="id" type="long">
+  Template ID (if updating existing template)
+</ParamField>
+
+<ParamField body="name" type="string" required>
+  Vulnerability name
+</ParamField>
+
+<ParamField body="categoryId" type="long">
+  Category ID (required if categoryName not provided)
+</ParamField>
+
+<ParamField body="categoryName" type="string">
+  Category name (required if categoryId not provided)
+</ParamField>
+
+<ParamField body="description" type="string">
+  Description (supports Markdown, will be converted to HTML)
+</ParamField>
+
+<ParamField body="recommendation" type="string">
+  Remediation recommendation (supports Markdown)
+</ParamField>
+
+<ParamField body="severityId" type="integer">
+  Severity level (0-9)
+</ParamField>
+
+<ParamField body="impactId" type="integer">
+  Impact score (0-9)
+</ParamField>
+
+<ParamField body="likelihoodId" type="integer">
+  Likelihood score (0-9)
+</ParamField>
+
+<ParamField body="active" type="boolean">
+  Whether template is active
+</ParamField>
+
+<ParamField body="cvss31Score" type="string">
+  CVSS 3.1 score
+</ParamField>
+
+<ParamField body="cvss31String" type="string">
+  CVSS 3.1 vector string
+</ParamField>
+
+<ParamField body="cvss40Score" type="string">
+  CVSS 4.0 score
+</ParamField>
+
+<ParamField body="cvss40String" type="string">
+  CVSS 4.0 vector string
+</ParamField>
+
+<ParamField body="customFields" type="array">
+  Array of custom field objects with `key` and `value` properties
+</ParamField>
+
+### Response
+
+<ResponseField name="vids" type="array">
+  Array of created/updated vulnerability template IDs
+</ResponseField>
+
+### Status Codes
+
+- `200` - Success: Templates created/updated
+- `400` - Invalid data (missing required fields, invalid category)
+- `401` - Not authorized
+
+---
+
+## Search Default Vulnerabilities
+
+<RequestExample>
+```bash GET /api/vulnerabilities/default/{name}
+curl -X GET "https://your-faction-instance.com/api/vulnerabilities/default/SQL" \
+  -H "FACTION-API-KEY: your-api-key"
+```
+</RequestExample>
+
+Searches for default vulnerability templates by name using partial matching (case-insensitive).
+
+### Path Parameters
+
+<ParamField path="name" type="string" required>
+  Vulnerability name to search (partial matching supported)
+</ParamField>
+
+### Authentication
+
+<ParamField header="FACTION-API-KEY" type="string" required>
+  API authentication key
+</ParamField>
+
+### Response
+
+Returns an array of matching `DefaultVulnerabilityDTO` objects with custom fields.
+
+### Status Codes
+
+- `200` - Success: Matching templates returned
+- `401` - Not authorized
+- `400` - Unknown error
+
+---
+
+## Get Default Vulnerability by ID
+
+<RequestExample>
+```bash GET /api/vulnerabilities/default/getvuln/{id}
+curl -X GET "https://your-faction-instance.com/api/vulnerabilities/default/getvuln/45" \
+  -H "FACTION-API-KEY: your-api-key"
+```
+</RequestExample>
+
+Retrieves a specific default vulnerability template by ID.
+
+### Path Parameters
+
+<ParamField path="id" type="long" required>
+  Default vulnerability template ID
+</ParamField>
+
+### Authentication
+
+<ParamField header="FACTION-API-KEY" type="string" required>
+  API authentication key
+</ParamField>
+
+### Response
+
+Returns a `DefaultVulnerabilityDTO` object with custom fields.
+
+### Status Codes
+
+- `200` - Success: Template returned
+- `400` - Invalid vulnerability template ID
+- `401` - Not authorized
+
+---
+
+## Get Vulnerability by ID
+
+<RequestExample>
+```bash GET /api/vulnerabilities/getvuln/{id}
+curl -X GET "https://your-faction-instance.com/api/vulnerabilities/getvuln/789" \
+  -H "FACTION-API-KEY: your-api-key"
+```
+</RequestExample>
+
+Retrieves a specific vulnerability instance by ID (not a template).
+
+### Path Parameters
+
+<ParamField path="id" type="long" required>
+  Vulnerability ID
+</ParamField>
+
+### Authentication
+
+<ParamField header="FACTION-API-KEY" type="string" required>
+  API authentication key (requires Remediation or Manager role)
+</ParamField>
+
+### Response
+
+Returns a `VulnerabilityDTO` object with custom fields.
+
+### Status Codes
+
+- `200` - Success: Vulnerability returned
+- `400` - No matching vulnerability found
+- `401` - Not authorized
+
+---
+
+## Get Vulnerability by Tracking ID
+
+<RequestExample>
+```bash GET /api/vulnerabilities/gettracking/{track}
+curl -X GET "https://your-faction-instance.com/api/vulnerabilities/gettracking/JIRA-1234" \
+  -H "FACTION-API-KEY: your-api-key"
+```
+</RequestExample>
+
+Retrieves a vulnerability by its assigned tracking ID (e.g., JIRA ticket number).
+
+### Path Parameters
+
+<ParamField path="track" type="string" required>
+  Vulnerability tracking ID
+</ParamField>
+
+### Authentication
+
+<ParamField header="FACTION-API-KEY" type="string" required>
+  API authentication key (requires Remediation or Manager role)
+</ParamField>
+
+### Response
+
+Returns a `VulnerabilityDTO` object with custom fields.
+
+### Status Codes
+
+- `200` - Success: Vulnerability returned
+- `400` - No matching tracking ID found
+- `401` - Not authorized
+
+---
+
+## Set Tracking ID
+
+<RequestExample>
+```bash POST /api/vulnerabilities/settracking
+curl -X POST "https://your-faction-instance.com/api/vulnerabilities/settracking" \
+  -H "FACTION-API-KEY: your-api-key" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "vulnId=789" \
+  -d "trackingId=JIRA-1234"
+```
+</RequestExample>
+
+Assigns a tracking number to a vulnerability for integration with external ticketing systems.
+
+### Authentication
+
+<ParamField header="FACTION-API-KEY" type="string" required>
+  API authentication key (requires Remediation or Manager role)
+</ParamField>
+
+### Form Parameters
+
+<ParamField body="vulnId" type="long" required>
+  Vulnerability ID
+</ParamField>
+
+<ParamField body="trackingId" type="string" required>
+  Tracking ID (e.g., JIRA ticket number)
+</ParamField>
+
+### Status Codes
+
+- `200` - Success: Tracking ID assigned
+- `400` - Vulnerability not found
+- `401` - Not authorized
+
+---
+
+## Set Vulnerability Status
+
+<RequestExample>
+```bash POST /api/vulnerabilities/setstatus
+curl -X POST "https://your-faction-instance.com/api/vulnerabilities/setstatus" \
+  -H "FACTION-API-KEY: your-api-key" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "vulnId=789" \
+  -d "trackingId=JIRA-1234" \
+  -d "isClosedDev=true" \
+  -d "isClosedProd=false" \
+  -d "devClosedDate=2024-03-15" \
+  -d "prodClosedDate="
+```
+</RequestExample>
+
+Sets the remediation status (open/closed) of a vulnerability in development or production environments.
+
+### Authentication
+
+<ParamField header="FACTION-API-KEY" type="string" required>
+  API authentication key (requires Remediation or Manager role)
+</ParamField>
+
+### Form Parameters
+
+<ParamField body="vulnId" type="long">
+  Vulnerability ID (required if trackingId not provided)
+</ParamField>
+
+<ParamField body="trackingId" type="string">
+  Tracking ID (required if vulnId not provided)
+</ParamField>
+
+<ParamField body="isClosedDev" type="boolean">
+  Set to true if fixed in development environment
+</ParamField>
+
+<ParamField body="isClosedProd" type="boolean">
+  Set to true if fixed in production environment
+</ParamField>
+
+<ParamField body="devClosedDate" type="date">
+  Date of remediation in development
+</ParamField>
+
+<ParamField body="prodClosedDate" type="date">
+  Date of remediation in production
+</ParamField>
+
+### Status Codes
+
+- `200` - Success: Status updated
+- `400` - Vulnerability not found or invalid parameters
+- `401` - Not authorized
+
+---
+
+## Get All Vulnerabilities by Date Range
+
+<RequestExample>
+```bash POST /api/vulnerabilities/all
+curl -X POST "https://your-faction-instance.com/api/vulnerabilities/all" \
+  -H "FACTION-API-KEY: your-api-key" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "start=01/01/2024" \
+  -d "end=03/31/2024"
+```
+</RequestExample>
+
+Retrieves all vulnerabilities discovered within a specified timeframe.
+
+### Authentication
+
+<ParamField header="FACTION-API-KEY" type="string" required>
+  API authentication key (requires Assessor, Manager, or Remediation role)
+</ParamField>
+
+### Form Parameters
+
+<ParamField body="start" type="string" required>
+  Start date of search (MM/DD/YYYY format)
+</ParamField>
+
+<ParamField body="end" type="string">
+  End date of search (MM/DD/YYYY format). If not provided, returns all from start date to present.
+</ParamField>
+
+### Response
+
+Returns an array of `VulnerabilityDTO` objects with custom fields.
+
+### Status Codes
+
+- `200` - Success: Vulnerabilities returned
+- `400` - Invalid date format
+- `401` - Not authorized
+
+---
+
+## Get All Categories
+
+<RequestExample>
+```bash GET /api/vulnerabilities/categories
+curl -X GET "https://your-faction-instance.com/api/vulnerabilities/categories" \
+  -H "FACTION-API-KEY: your-api-key"
+```
+</RequestExample>
+
+Retrieves all vulnerability categories ordered by name.
+
+### Authentication
+
+<ParamField header="FACTION-API-KEY" type="string" required>
+  API authentication key
+</ParamField>
+
+### Response
+
+Returns an array of `CategoryDTO` objects.
+
+<ResponseField name="id" type="long">
+  Category ID
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Category name
+</ResponseField>
+
+### Status Codes
+
+- `200` - Success: Categories returned
+- `401` - Not authorized
+
+---
+
+## Get Category by ID
+
+<RequestExample>
+```bash GET /api/vulnerabilities/category/{id}
+curl -X GET "https://your-faction-instance.com/api/vulnerabilities/category/12" \
+  -H "FACTION-API-KEY: your-api-key"
+```
+</RequestExample>
+
+Retrieves a specific vulnerability category by ID.
+
+### Path Parameters
+
+<ParamField path="id" type="long" required>
+  Category ID
+</ParamField>
+
+### Authentication
+
+<ParamField header="FACTION-API-KEY" type="string" required>
+  API authentication key
+</ParamField>
+
+### Response
+
+Returns a `CategoryDTO` object.
+
+### Status Codes
+
+- `200` - Success: Category returned
+- `404` - Category not found
+- `401` - Not authorized
+
+---
+
+## Create Category
+
+<RequestExample>
+```bash POST /api/vulnerabilities/category
+curl -X POST "https://your-faction-instance.com/api/vulnerabilities/category" \
+  -H "FACTION-API-KEY: your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Mobile Security"}'
+```
+</RequestExample>
+
+Creates a new vulnerability category.
+
+### Authentication
+
+<ParamField header="FACTION-API-KEY" type="string" required>
+  API authentication key (requires Manager role)
+</ParamField>
+
+### Request Body
+
+<ParamField body="name" type="string" required>
+  Category name
+</ParamField>
+
+### Response
+
+Returns the created `CategoryDTO` object.
+
+### Status Codes
+
+- `200` - Success: Category created
+- `400` - Invalid name or category already exists
+- `401` - Not authorized (Manager permission required)
+
+---
+
+## Get Risk Levels
+
+<RequestExample>
+```bash GET /api/vulnerabilities/getrisklevels
+curl -X GET "https://your-faction-instance.com/api/vulnerabilities/getrisklevels" \
+  -H "FACTION-API-KEY: your-api-key"
+```
+</RequestExample>
+
+Retrieves customized risk ranking levels configured in the system.
+
+### Authentication
+
+<ParamField header="FACTION-API-KEY" type="string" required>
+  API authentication key
+</ParamField>
+
+### Response
+
+Returns an array of risk level objects:
+
+<ResponseField name="id" type="integer">
+  Risk level ID
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Risk level name (e.g., "Critical", "High", "Medium", "Low")
+</ResponseField>
+
+### Status Codes
+
+- `200` - Success: Risk levels returned
+- `401` - Not authorized
+
+---
+
+## Authorization Requirements
+
+### Default Vulnerabilities (Templates)
+- **View/Search**: Any authenticated user
+- **Upload/Modify**: Any authenticated user
+
+### Vulnerabilities (Instances)
+- **View by ID/Tracking**: Remediation or Manager role
+- **Set Tracking/Status**: Remediation or Manager role
+- **Get All by Date**: Assessor, Manager, or Remediation role
+
+### Categories
+- **View**: Any authenticated user
+- **Create**: Manager role
+
+## Notes
+
+- **Markdown Support**: Description and recommendation fields support Markdown syntax, which is automatically converted to HTML.
+- **Custom Fields**: Both default vulnerabilities (templates) and vulnerability instances support custom fields.
+- **CVSS Versions**: The system supports both CVSS 3.1 and CVSS 4.0 scoring.
+- **Tracking Integration**: Use tracking IDs to integrate with external ticketing systems like JIRA.
+- **Remediation Tracking**: Track remediation status separately for development and production environments.

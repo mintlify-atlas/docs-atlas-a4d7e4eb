@@ -1,0 +1,139 @@
+---
+title: 'Burp Suite Integration'
+description: 'Integrate Faction with Burp Suite for seamless vulnerability collaboration'
+---
+
+## Overview
+
+The Faction Burp Suite extension enables security testers to send findings directly from Burp Suite into Faction, streamlining your vulnerability management workflow. This integration allows real-time collaboration between testers using Burp Suite and your team using Faction.
+
+## Installation
+
+### Prerequisites
+
+- Burp Suite Professional or Community Edition
+- Active Faction instance
+- Faction API key
+
+### Installing the Extension
+
+1. Download the Faction Burp extension from the official repository:
+   ```bash
+   git clone https://github.com/factionsecurity/Faction-Burp.git
+   ```
+
+2. In Burp Suite, navigate to **Extender** > **Extensions**
+
+3. Click **Add** and select the extension JAR file from the cloned repository
+
+4. The Faction extension should now appear in your installed extensions list
+
+## Configuration
+
+### Setting Up API Authentication
+
+1. In Faction, navigate to **Settings** > **API Keys**
+
+2. Generate a new API key for Burp Suite integration
+
+3. In Burp Suite, go to the **Faction** tab
+
+4. Enter your Faction instance details:
+   <CodeGroup>
+   ```json Configuration
+   {
+     "faction_url": "https://your-faction-instance.com",
+     "api_key": "your-api-key-here"
+   }
+   ```
+   </CodeGroup>
+
+5. Click **Test Connection** to verify the configuration
+
+## Usage
+
+### Sending Findings to Faction
+
+1. In Burp Suite, right-click on any issue in the **Target** or **Scanner** tabs
+
+2. Select **Send to Faction** from the context menu
+
+3. The extension will create a new vulnerability entry in Faction with:
+   - Issue title and description
+   - Severity rating
+   - Affected URL and parameters
+   - Request/response evidence
+   - CVSS score (if available)
+
+### Mapping to Assessments
+
+Findings sent from Burp Suite can be automatically mapped to specific assessments:
+
+1. In the Faction tab, configure the **Default Assessment**
+
+2. All findings will be associated with this assessment until changed
+
+3. Alternatively, select an assessment when sending each finding
+
+## Real-Time Collaboration
+
+### Team Visibility
+
+- Findings sent from Burp appear immediately in Faction's dashboard
+- Team members can add comments, assign remediation owners, and track status
+- All updates sync in real-time across your team
+
+### Workflow Integration
+
+The Burp integration respects your Faction workflow:
+
+- Findings inherit the default severity ratings configured in Faction
+- Status tracking follows your custom verification process
+- Email notifications are sent based on your notification settings
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use Dedicated API Keys">
+    Create separate API keys for each tester or Burp instance. This provides better audit trails and allows you to revoke access individually if needed.
+  </Accordion>
+
+  <Accordion title="Configure Default Assessments">
+    Set up default assessments for different testing phases (e.g., "Q1 External Pentest") to ensure findings are properly categorized.
+  </Accordion>
+
+  <Accordion title="Review Before Sending">
+    Review findings in Burp before sending to Faction to ensure they're valid and not false positives.
+  </Accordion>
+
+  <Accordion title="Include Evidence">
+    The extension automatically includes request/response data. Ensure sensitive data is redacted before sending.
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting
+
+### Connection Issues
+
+If you can't connect to Faction:
+
+- Verify your Faction URL is correct and accessible
+- Check that your API key is valid and hasn't expired
+- Ensure your network allows outbound HTTPS connections
+- Check Burp's extension error logs for details
+
+### Missing Findings
+
+If findings don't appear in Faction:
+
+- Verify you have permission to create findings in the target assessment
+- Check that the assessment is not archived or read-only
+- Review Faction's activity feed for error messages
+
+## GitHub Repository
+
+The Faction Burp Suite extension is open source and available at:
+
+**https://github.com/factionsecurity/Faction-Burp**
+
+Contributions, bug reports, and feature requests are welcome through GitHub Issues.
